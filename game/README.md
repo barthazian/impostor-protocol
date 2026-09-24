@@ -219,3 +219,19 @@ one-emergency-per-match and seed reproducibility.
   Wiring the cache roll to the Dice RNG and the contract is a later-phase task.
 - The AI impostor is intentionally simple (isolation heuristic + seeded sabotage
   schedule); it does not reason about the player's movement.
+
+
+## Artwork & assets provenance
+
+Everything you see on the station falls into one of two buckets, and only one of them is Rare Friends artwork.
+
+| element | what it is | how it is known |
+|---|---|---|
+| your Friend (the player) | its own **canonical on-chain sprite**, read at runtime and drawn as a 1px white halo then the mask at integer 5x — the silhouette is byte-for-byte canonical | `createFriendReader()`; `render.ts` |
+| the NPC crewmates | **canonical on-chain artwork too, each from its own token** — read live from the Rare Friends Generations contract on Robinhood mainnet (chain 4663) through the SDK's generation sprite reader | `crew-art-check` proves 6 distinct tokens aboard, no token used twice, each actor's rows byte-equal to the recorded chain frames, and 0 fallbacks |
+| the impostor | the **same canonical mask**, with a hostile tint (`#7c1220`) and a damaged halo (`#ff5f5f`) applied as pixel operations — and **only after the round is decided** | `crew-art-check` + `reveal-strip-check`: the treatment is absent from 138/138 live frames, including briefing frames, with computed-style sweeps finding nothing that paints `rgb(124,18,32)` or `rgb(255,95,95)`; at the reveal the named impostors wear it (2/2) and the crew carry zero hostile pixels (5/5) |
+| the station (floor, walls, vents, consoles, props) | **drawn in code** as vector/canvas geometry — not Rare Friends artwork, and not third-party art either | the SDK's world-art generator emits isometric 1600x1200 SVG authored for a 3/4-view world (12 object layers, no `<image>`, no chain read), which does not sit correctly on this station's flat top-down plan; the artwork manifest's `seededLandscape`/`worldData` addresses are read by no SDK module, and all 20 plausible selectors revert on-chain |
+| sound | the SDK's procedural sound kit — no audio files | — |
+| third-party assets | **none**: no PNG/JPG/SVG/GIF, no `url()`, no `<img>`, no `new Image`, no `data:` URI anywhere in the game | `find` + `grep` across the source |
+
+So: every **character** on the station is genuine on-chain Rare Friends artwork, the **station itself** is geometry drawn in code, and an impostor is a real Friend's own frame wearing a treatment you only ever see once the round is over.
