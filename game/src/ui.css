@@ -180,6 +180,26 @@
 .ip .ip-sub { color: var(--ip-muted); font-size: clamp(10px, 1.1cqw, 12px); }
 
 .ip .ip-note { color: var(--ip-muted); font-size: clamp(9.5px, 1.08cqw, 11.5px); line-height: 1.5; overflow-wrap: anywhere; }
+
+/* --------------------------------------------------------------- adaptation
+   The host gives the game a frame from ~960x640 (desktop) down to ~388x258
+   (phone) — measured. These re-state a readable floor for the whole chrome:
+   before this, body copy settled at 9.5px on desktop and 9px on a phone, with
+   buttons at 9.8px. The `section.ip-root` prefix (the root element carries only
+   `ip-root`, not `ip`, so an `.ip.ip-root` selector matches NOTHING) keeps them
+   winning wherever the original rules sit in this file, and every value still
+   grows with the frame. */
+section.ip-root .ip-btn,
+section.ip-root .ip-btn--sm { font-size: clamp(12px, 1.25cqw, 15px); min-height: clamp(32px, 3.6cqw, 40px); }
+section.ip-root .ip-note { font-size: clamp(12px, 1.28cqw, 16px); }
+section.ip-root .ip-kv span { font-size: clamp(12px, 1.25cqw, 15px); }
+section.ip-root .ip-chip { font-size: clamp(11px, 1.15cqw, 14px); }
+section.ip-root .ip-h { font-size: clamp(12px, 1.3cqw, 15px); }
+section.ip-root .ip-title { font-size: clamp(17px, 2.9cqw, 30px); }
+section.ip-root .ip-trow-name b { font-size: clamp(12px, 1.3cqw, 15px); }
+section.ip-root .ip-trow-kind { font-size: clamp(11px, 1.15cqw, 13px); }
+section.ip-root .ip-hud-btn { font-size: clamp(11px, 1.2cqw, 14px); min-height: clamp(30px, 3.4cqw, 38px); }
+section.ip-root .ip-hud-alarm { font-size: clamp(11px, 1.2cqw, 14px); }
 .ip .ip-note b,
 .ip .ip-note strong { color: var(--ip-text); font-weight: 700; }
 .ip .ip-note em { color: var(--ip-accent); font-style: normal; }
