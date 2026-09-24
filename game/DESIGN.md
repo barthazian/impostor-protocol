@@ -18,7 +18,7 @@ tasks are RNG action sequences, and tournaments are entered with $RAREFRIENDS
 | Wager / currency | One RF-priced consumable + one weighted outcome table. `buy` → `play` → `settle` → `redeem`. | Tournament Pass (1 RF) = 1 cache roll. `settle` opens the cache. `redeem` sells salvage back for RF. |
 | Skill affecting RF | `settle` draws from a fixed weight table; outcome cannot be weighted per play. | Skill pays in **Salvage Points (SP)**, a session-only cosmetic currency. RF is the wager layer. Both are labeled separately. No fake "skill improves payout" claim. |
 | Persistence | None. Reload = new session. | Everything is session-scoped and stated as such in the UI. |
-| Friend artwork | `createFriendReader().read(friendId)` returns canonical 16×16 clips, reachable from inside the sandbox. | The player's Friend is drawn from its **unmodified canonical mask** (white halo + mask, 5× integer scale), tinted by crew color like a suit. Bots use original crewmate art. |
+| Friend artwork | `createFriendReader().read(friendId)` returns canonical 16×16 clips, reachable from inside the sandbox. The SDK's generation sprite reader reads any other token the same way. | The player's Friend is drawn from its **unmodified canonical mask** (white halo + mask, 5× integer scale), tinted by crew color like a suit. Crewmates are canonical on-chain artwork too — each from its own token, read at runtime. The impostor's frame is one of those masks with a reveal-only pixel treatment (no redraw). |
 
 ## Game loop
 
