@@ -63,3 +63,13 @@ consumable rules, checks with real results, known limitations and asset credits.
 **Before submitting:** play a round yourself with your own wallet and Friend, on
 both desktop and phone. Then open the PR with
 `gh pr create --repo spokesz/rarefriends-vibeathon --head barthazian:submission/impostor-protocol`.
+
+**After any `npx friendsdk build`:** the build regenerates `docs/index.html` and
+drops the full-screen frame override, which would letterbox the game at the SDK's
+960px ceiling on a large display again. Re-apply it, then copy the build output into
+`docs/` and verify the frame size:
+
+```
+node apply-responsive-host.mjs docs/index.html
+node game/tests/live-frame-size.mjs https://barthazian.github.io/impostor-protocol/
+```
