@@ -795,6 +795,112 @@ section.ip-root .ip-hud-alarm { font-size: clamp(11px, 1.2cqw, 14px); }
 .ip-cosm-row[data-owned="true"] { border-color: #ccff003d; }
 .ip-swatch { width: 16px; height: 16px; border: 1px solid #ffffff33; box-shadow: inset 0 0 0 1px #00000080; }
 
+/* ---------- post-round reveal strip ----------
+   The one screen the impostor artwork is allowed to reach. Everything here is
+   rendered by `Debrief` and by nothing else, so no live phase can wear it: the
+   classes below appear in the DOM only once the round is over, and the treatment
+   colours are the station's own (#7c1220 / #ff5f5f), so the strip and the station
+   cannot drift apart. */
+
+.ip .ip-rs-card { grid-column: 1 / -1; }
+
+.ip .ip-rs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(6px, 0.9cqw, 10px);
+  align-content: flex-start;
+  min-width: 0;
+}
+
+.ip .ip-rs-item {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 4px 5px 5px;
+  border: 1px solid var(--ip-line);
+  background: var(--ip-sunken);
+  min-width: 0;
+}
+
+/* The treated frame, as a border and a label colour — the pixels themselves are
+   painted by the canvas from the same two colours the station blits. */
+.ip .ip-rs-item[data-treated="true"] { border-color: #ff5f5f66; background: #1d090d; }
+.ip .ip-rs-item[data-treated="true"] .ip-rs-tag { color: #ff5f5f; }
+.ip .ip-rs-item[data-is-player="true"] { border-style: dashed; border-color: #4a5a75; }
+
+.ip .ip-rs-mask {
+  display: block;
+  width: 48px;
+  height: 48px;
+  /* 1:1 with the bitmap: 16 canonical pixels at 3x, no resampling, hard edges. */
+  image-rendering: pixelated;
+}
+
+.ip .ip-rs-name {
+  max-width: 74px;
+  font-size: clamp(11px, 1.05cqw, 12px);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ip .ip-rs-tag {
+  font-size: clamp(11px, 1.02cqw, 12px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ip-muted);
+}
+
+/* ---------- the debrief PINS its header and its exit controls ----------
+   The debrief is a definite-height container (it is absolutely positioned over
+   the stage), so its height is a fact to divide, not a suggestion. Divided by
+   `auto auto auto` the middle row is handed a SHARE of that height — the body's
+   own `min-height: 0` makes its share free for the taking — and when the share
+   was smaller than the strip, the body's content painted straight over the
+   footer: on a phone frame the simulated-economy banner, the session-points line
+   and the Airlock / Play again buttons landed on the strip's entries, and on a
+   desktop frame the body was squeezed into a nested scroll that cut the
+   reward-caches card mid-sentence while the header scrolled away with it.
+
+   Divided by `auto minmax(0, 1fr) auto` it is three explicit rows: the header and
+   the footer take exactly the height their content needs and stay PINNED to the
+   top and bottom of the frame, and the middle row takes the leftover height as a
+   definite scroll region, so it SCROLLS instead of collapsing and its content can
+   never reach the rows above or below it. */
+.ip.ip-debrief {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+/* The body keeps the base rule's `min-height: 0` and becomes the one scroller:
+   inside a `minmax(0, 1fr)` row it is exactly as tall as the space left over, so
+   its cards scroll within a definite region instead of spilling into the pins. */
+.ip.ip-debrief > .ip-debrief-body { overflow-y: auto; }
+
+/* A phone-sized frame (388x258) is 258px tall and the pinned header and footer
+   together are taller than that, so pinning there would leave the body a
+   zero-height sliver and put the strip out of reach exactly where it is most
+   wanted. Below COMPACT_HEIGHT the debrief is ONE COLUMN IN FLOW instead: flow
+   boxes cannot overlap, nothing is squeezed below its content, and the frame's
+   own scroll reaches every block, the Airlock / Play again buttons included. */
+.ip.ip-debrief[data-compact="true"] {
+  display: block;
+  overflow-y: auto;
+}
+/* The gap the three-row grid provides between the sections, restored for the
+   stacked layout. */
+.ip.ip-debrief[data-compact="true"] > .ip-debrief-head { margin-bottom: clamp(8px, 1.1cqw, 14px); }
+.ip.ip-debrief[data-compact="true"] > .ip-debrief-body { margin-bottom: clamp(8px, 1.1cqw, 14px); }
+/* The body is a block in flow in that layout, exactly as tall as its cards, and
+   must not become a second scroller inside the one the screen already has. */
+.ip.ip-debrief[data-compact="true"] .ip-debrief-body { overflow: visible; }
+
+/* A phone-sized frame (388x258) is too short for the strip's desktop boxes as well,
+   so the entries tighten there (48px masks and the 11px labels are untouched). */
+.ip.ip-debrief[data-compact="true"] .ip-rs-item { padding: 3px 4px 4px; gap: 2px; }
+.ip.ip-debrief[data-compact="true"] .ip-rs-name { max-width: 68px; }
+
 /* ---------- narrow frames ---------- */
 
 @container ip (max-width: 620px) {
@@ -830,4 +936,168 @@ section.ip-root .ip-hud-alarm { font-size: clamp(11px, 1.2cqw, 14px); }
   .ip .ip-card { padding: 8px; }
   .ip .ip-title { font-size: 15px; }
   .ip .ip-card { gap: 6px; }
+}
+
+/* ------------------------------------------------------------ type floor
+   The first pass lifted the buttons, notes, chips and headings to 11px. These
+   are the copy rules it missed (the eyebrow, tier blurbs, tables, tags, roster
+   states, the HUD feed). Every one of them now starts at 11px and grows with
+   the frame — 9px has no business on a phone screen. */
+section.ip-root .ip-eyebrow { font-size: clamp(11px, 1.05cqw, 12px); }
+section.ip-root .ip-sub,
+section.ip-root .ip-feedback { font-size: clamp(11px, 1.15cqw, 13px); }
+section.ip-root .ip-tier-top span,
+section.ip-root .ip-tier-sub,
+section.ip-root .ip-plan li,
+section.ip-root .ip-roster-name b,
+section.ip-root .ip-tag,
+section.ip-root .ip-toggle-text b,
+section.ip-root .ip-toggle-text span,
+section.ip-root .ip-progress-head,
+section.ip-root .ip-vision,
+section.ip-root .ip-feed,
+section.ip-root .ip-hud-roster li,
+section.ip-root .ip-hud-roster-state,
+section.ip-root .ip-sabotage,
+section.ip-root .ip-hint,
+section.ip-root .ip-keycap,
+section.ip-root .ip-zone > h3,
+section.ip-root .ip-table,
+section.ip-root .ip-table thead th,
+section.ip-root .ip-line-head b,
+section.ip-root .ip-line-head time,
+section.ip-root .ip-line-text,
+section.ip-root .ip-vote-meta b,
+section.ip-root .ip-vote-meta span,
+section.ip-root .ip-waiting,
+section.ip-root .ip-inv-meta b,
+section.ip-root .ip-cache-top b { font-size: clamp(11px, 1.15cqw, 13px); }
+
+/* ------------------------------------------------------- narrow frames
+   A phone is ~390px wide and the SDK sandbox is 3:2, so a phone frame measures
+   388x258 CSS px (the harness worst case) and ~390x520 in portrait. Both are
+   under this breakpoint. Everything below RESTRUCTURES — one-line heads, the
+   briefing's cards side by side, a segmented tier picker, a full-bleed task
+   sheet — because the 11px/30px floor rules out making it fit by shrinking
+   type. The desktop rules above are untouched. */
+
+.ip .ip-wide-only { display: inline; }
+.ip .ip-narrow-only { display: none; }
+
+@media (max-width: 560px) {
+  .ip .ip-wide-only { display: none; }
+  .ip .ip-narrow-only { display: inline; }
+
+  /* ---- briefing + lobby: one-line heads, slim footers ---- */
+  .ip.ip-brief,
+  .ip.ip-lobby { gap: 4px; padding: 6px; }
+  .ip-brief .ip-eyebrow,
+  .ip-lobby .ip-eyebrow { display: none; }
+  /* section.ip-root .ip-title is more specific than a two-class rule, so these
+     carry the root prefix too; ellipsis keeps a long station name on one line. */
+  section.ip-root .ip-brief .ip-title,
+  section.ip-root .ip-lobby .ip-title {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ip-brief-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; }
+  .ip-brief .ip-head-left { grid-column: 1; grid-row: 1; }
+  .ip-brief .ip-sub { display: none; }
+  .ip-brief .ip-head-right {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .ip-lobby-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; }
+  .ip-lobby .ip-head-left { grid-column: 1; grid-row: 1; display: flex; flex-wrap: nowrap; gap: 4px 10px; align-items: baseline; min-width: 0; }
+  .ip-lobby .ip-head-left .ip-sub { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ip-lobby .ip-head-right { display: contents; }
+  .ip-lobby .ip-head-actions { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+  .ip-lobby .ip-kv { grid-column: 1 / -1; grid-row: 2; gap: 3px; }
+  .ip-lobby .ip-kv > span { padding: 1px 6px; }
+
+  /* ---- briefing body: roster and plan side by side, both always in frame ---- */
+  .ip-brief-body {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 6px;
+    overflow: hidden;
+  }
+  /* The role card at this width repeats the header's "You are Crew" chip and the
+     plan's lines, and it costs the roster rows it cannot spare. */
+  .ip-brief-body > .ip-role { display: none; }
+  .ip-brief .ip-card { min-height: 0; padding: 6px; gap: 4px; overflow: hidden; }
+  .ip-brief .ip-roster,
+  .ip-brief .ip-plan { flex: 1 1 auto; min-height: 0; max-height: none; overflow: auto; }
+  /* The plan card's trailing note is a 160px paragraph about the room seed; it is
+     already stated in the lobby's Friend Room card, and here it would shrink the
+     four plan lines to nothing (they are the point of the card). */
+  .ip-brief .ip-card--plan > .ip-note { display: none; }
+  /* Crew tags are one short word ("methodical"), so the desktop three-column row
+     (dot | name | tag) stays one line; only the padding and gap tighten. */
+  .ip-brief .ip-roster { gap: 2px; }
+  .ip-brief .ip-roster li { gap: 2px 6px; padding: 1px 5px; }
+  .ip-brief .ip-plan li { gap: 4px; }
+
+  .ip-brief-foot { gap: 6px; padding-top: 4px; padding-bottom: var(--ip-safe-bottom); }
+  .ip-brief .ip-toggle { flex: 0 1 auto; padding: 3px 8px; gap: 6px; }
+  .ip-brief .ip-toggle-text span { display: none; }
+  .ip-brief-foot .ip-start { flex: 1 1 auto; }
+
+  /* ---- lobby body: the tier picker is a segmented control, all three visible ---- */
+  .ip-lobby-body { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .ip .ip-card--tier { padding: 6px; gap: 4px; }
+  .ip-card--tier > .ip-h { display: none; }
+  .ip-tiers--segmented { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .ip-tiers--segmented .ip-tier { padding: 3px 5px; }
+  .ip-tiers--segmented .ip-tier-top { display: grid; gap: 1px; }
+  .ip-tiers--segmented .ip-tier-top b { font-size: 11px; letter-spacing: 0.04em; }
+  .ip-tiers--segmented .ip-tier-top span { font-size: 11px; white-space: normal; }
+  .ip-tiers--segmented .ip-tier-sub { display: none; }
+
+  .ip-lobby-foot { gap: 4px; padding-top: 4px; padding-bottom: var(--ip-safe-bottom); }
+  .ip-lobby .ip-feedback[data-tone="message"] { display: none; }
+  .ip-lobby-foot .ip-foot-actions { flex: 1 1 100%; justify-content: space-between; }
+  .ip-lobby-foot .ip-start { flex: 1 1 auto; }
+
+  /* ---- task list: a full-bleed sheet so all six rows fit in 258px ---- */
+  .ip-overlay { place-items: stretch; padding: 6px 6px 44px; }
+  .ip-sheet { width: 100%; }
+  .ip-sheet-head { padding: 2px 8px; gap: 2px 8px; }
+  .ip-tasklist .ip-sheet-head .ip-h { display: none; }
+  .ip-tasklist .ip-sheet-head .ip-btn { min-height: 30px; padding: 0 10px; }
+  .ip-sheet-foot { display: none; }
+  /* Each task sits in its own zone, so the body's row gap is the gap between
+     rows — 6px of it per row was 22px of the sheet spent on air. */
+  .ip-sheet-body { padding: 4px 8px; gap: 2px; }
+  .ip-progress-block { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; }
+  .ip-progress-block .ip-bar { display: none; }
+  .ip-zone { gap: 0; }
+  .ip-zone > h3 { display: none; }
+  .ip-trows { gap: 0; }
+  .ip-trow { padding: 1px 6px; gap: 6px; }
+  .ip-trow:not([data-done="true"]):not([data-active="true"]) .ip-chip { display: none; }
+
+  /* a scrollbar that is actually drawn, on the two lists that still scroll */
+  .ip-sheet-body,
+  .ip-brief .ip-roster,
+  .ip-brief .ip-plan { scrollbar-width: thin; scrollbar-color: #3a4a66 var(--ip-sunken); }
+  .ip-sheet-body::-webkit-scrollbar,
+  .ip-brief .ip-roster::-webkit-scrollbar,
+  .ip-brief .ip-plan::-webkit-scrollbar { width: 10px; }
+  .ip-sheet-body::-webkit-scrollbar-track,
+  .ip-brief .ip-roster::-webkit-scrollbar-track,
+  .ip-brief .ip-plan::-webkit-scrollbar-track { background: var(--ip-sunken); }
+  .ip-sheet-body::-webkit-scrollbar-thumb,
+  .ip-brief .ip-roster::-webkit-scrollbar-thumb,
+  .ip-brief .ip-plan::-webkit-scrollbar-thumb { background: #3a4a66; border: 2px solid var(--ip-sunken); }
 }

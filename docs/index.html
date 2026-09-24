@@ -1,15 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Rare Friends: Impostor Protocol</title><link rel="stylesheet" href="./runtime.css"><link rel="stylesheet" href="./layout.css"><style>/* Fill the screen instead of the SDK's default 960px ceiling: with a 3:2 frame the
-   width may be at most 1.5x the viewport height, so this takes whichever dimension
-   binds. On a phone it resolves to the full width (already the 3:2 maximum); on a
-   1920x1080 desktop it grows from 960x640 to about 1608x1072. #root uses margin:auto,
-   so the frame stays centred. Re-apply after `friendsdk build` regenerates this file. */
-:root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}
-/* Portrait on phones: a 3:2 frame in a 390x844 viewport uses barely a third of the
-   screen, so narrow viewports get a 3:4 frame instead (~390x520). The renderer sizes
-   the world to the frame box, so the taller frame fills with world rather than
-   letterboxing. The width cap follows the ratio: 3:4 means width <= 0.75 x height. */
-@media (max-width:620px){:root{--rf-game-aspect-ratio:3 / 4;--rf-game-max-width:min(100vw,calc(75vh - 12px))}}</style><style>/* responsive-host */
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Rare Friends: Impostor Protocol</title><link rel="stylesheet" href="./runtime.css"><link rel="stylesheet" href="./layout.css"><style>/* responsive-host */
 :root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}
 @media (max-width:620px){:root{--rf-game-aspect-ratio:3 / 4;--rf-game-max-width:min(100vw,calc(75vh - 12px))}}
 </style></head><body><main id="root"></main><script src="./runtime.js"></script></body></html>

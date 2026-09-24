@@ -2,6 +2,8 @@
  * Screen contract: the props `index.tsx` passes to every React screen in
  * `ui.tsx`. Both files compile against this, so neither can drift.
  */
+import type { GenerationSprites } from "@rarefriends/friendsdk/sprites";
+import type { CrewArt } from "./crew-art";
 import type {
   ActorId, CrewColorId, EjectionResult, MatchState, MatchSummary, Role, Tier, VoteTarget,
 } from "./types";
@@ -53,6 +55,16 @@ export type InventoryRow = Readonly<{
 
 export type DebriefProps = Readonly<{
   summary: MatchSummary; state: MatchState;
+  /**
+   * The post-round reveal strip's pixels. The debrief is the only screen that may
+   * show the impostor treatment, so it is the only screen that receives the
+   * round's canonical artwork: `crewArt` for the NPCs, the player's own clips and
+   * suit tint for the player's entry. Nothing here is read before the round is
+   * over, and nothing derived from it is rendered while a round is live.
+   */
+  crewArt: CrewArt | null;
+  playerSprites: GenerationSprites | null;
+  playerColor: string;
   caches: readonly CacheOffer[]; onOpenCache: (playId: bigint) => void;
   inventory: readonly InventoryRow[]; onRedeem: (outcomeId: number) => void;
   busy: boolean; error: string; message: string; finishNote: string;

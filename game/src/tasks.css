@@ -1,14 +1,31 @@
 /*
- * IMPOSTOR PROTOCOL — station task console overlay.
- * Space-station terminal UI: dark steel panels, signal-green accent.
- * Everything is scoped under .ip-task so the overlay cannot leak into the
- * station HUD. Layout mirrors the geometry constants in tasks.tsx
- * (WIRE_ROW_PITCH / WIRE_ROW_OFFSET / WIRE_BOARD_HEIGHT).
+ * IMPOSTOR PROTOCOL — station task arcade.
+ *
+ * Six retro pixel-arcade games in one cabinet shell. Hard edges only: nothing
+ * here rounds a corner, blends a gradient or smooths a scaled bitmap. The
+ * palette is deliberately tiny — five signal colours on steel — and every
+ * type size is 11px or larger so the small frame stays readable on a phone.
+ *
+ * Layout mirrors the geometry constants in tasks.tsx (the canvas games publish
+ * their integer scale, the wiring board keeps WIRE_ROW_PITCH / WIRE_ROW_OFFSET).
  */
 
-/* ---------- shell -------------------------------------------------- */
-
 .ip-task {
+  /* ---- cabinet palette: one steel ramp, one signal ramp ---- */
+  --ipx-void: #05070c;
+  --ipx-screen: #0a0e17;
+  --ipx-panel: #141a24;
+  --ipx-well: #0f1520;
+  --ipx-steel: #263043;
+  --ipx-steel-hi: #3a4763;
+  --ipx-ink: #e8edf7;
+  --ipx-dim: #8b9bb4;
+  --ipx-lime: #ccff00;
+  --ipx-cyan: #38fedc;
+  --ipx-red: #ff4d4d;
+  --ipx-amber: #f5f557;
+  --ipx-violet: #b06bff;
+
   position: absolute;
   inset: 0;
   z-index: 30;
@@ -16,11 +33,9 @@
   align-items: center;
   justify-content: center;
   padding: 10px;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgba(56, 254, 220, 0.06), transparent 60%),
-    rgba(6, 9, 14, 0.78);
-  color: #e8edf7;
-  font: 13px/1.45 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  background: rgba(6, 9, 14, 0.82);
+  color: var(--ipx-ink);
+  font: 13px/1.4 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -38,53 +53,37 @@
 .ip-task button {
   font: inherit;
   color: inherit;
-  background: #1b2431;
-  border: 1px solid #263043;
-  border-radius: 6px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 8px 12px;
+  background: var(--ipx-panel);
+  border: 2px solid var(--ipx-steel);
+  border-radius: 0;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 6px 10px;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
 .ip-task button:hover:not(:disabled) {
-  background: #202b3b;
-  border-color: #3a4763;
+  border-color: var(--ipx-steel-hi);
 }
 
 .ip-task button:active:not(:disabled) {
-  background: #263043;
+  background: var(--ipx-steel);
 }
 
 .ip-task button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: default;
 }
 
 .ip-task button:focus-visible,
 .ip-task [tabindex]:focus-visible {
-  outline: 2px solid #ccff00;
-  outline-offset: 2px;
+  outline: 3px solid var(--ipx-lime);
+  outline-offset: 1px;
 }
 
-.ip-action {
-  background: #ccff00;
-  border-color: #ccff00;
-  color: #0b0e14;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-.ip-action:hover:not(:disabled) {
-  background: #d9ff3d;
-  border-color: #d9ff3d;
-}
-
-.ip-action:active:not(:disabled) {
-  background: #b6e600;
-}
+/* ---------- shell -------------------------------------------------- */
 
 .ip-task-panel {
   position: relative;
@@ -92,33 +91,35 @@
   flex-direction: column;
   width: min(700px, 100%);
   max-height: 100%;
-  background: #141a24;
-  border: 1px solid #263043;
-  border-radius: 10px;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.66), inset 0 1px 0 rgba(232, 237, 247, 0.05);
+  background: var(--ipx-panel);
+  border: 2px solid var(--ipx-steel);
+  border-radius: 0;
+  box-shadow: 0 0 0 2px var(--ipx-void), 0 10px 0 rgba(0, 0, 0, 0.5);
   outline: none;
   overflow: hidden;
 }
 
 .ip-task-panel::before {
   content: "";
-  height: 3px;
+  height: 6px;
   flex: none;
-  background: linear-gradient(90deg, #ccff00, #38fedc 55%, rgba(38, 48, 67, 0));
+  background: var(--ipx-steel);
+  border-bottom: 2px solid var(--ipx-void);
 }
 
 .ip-task-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px 8px;
-  border-bottom: 1px solid #263043;
+  gap: 10px;
+  padding: 8px 10px 6px;
+  border-bottom: 2px solid var(--ipx-void);
+  background: var(--ipx-void);
 }
 
 .ip-task-id {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
   margin-right: auto;
 }
@@ -126,18 +127,18 @@
 .ip-task-station {
   font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #e8edf7;
+  letter-spacing: 0.06em;
+  color: var(--ipx-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ip-task-kind {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #38fedc;
+  color: var(--ipx-cyan);
 }
 
 .ip-task-clock {
@@ -149,60 +150,62 @@
 
 .ip-task-bar {
   position: relative;
-  width: 150px;
-  height: 10px;
-  background: #0b0e14;
-  border: 1px solid #263043;
-  border-radius: 5px;
+  width: 132px;
+  height: 12px;
+  background: var(--ipx-void);
+  border: 2px solid var(--ipx-steel);
+  border-radius: 0;
   overflow: hidden;
 }
 
 .ip-task-bar-fill {
   height: 100%;
-  background: #ccff00;
-  transition: width 90ms linear;
+  background: var(--ipx-lime);
 }
 
 .ip-task-bar-fill[data-urgent="true"] {
-  background: #ff4d4d;
+  background: var(--ipx-red);
 }
 
 .ip-task-seconds {
-  min-width: 42px;
+  min-width: 40px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  color: #8b9bb4;
+  font-size: 13px;
+  color: var(--ipx-dim);
 }
 
 .ip-task-seconds[data-urgent="true"] {
-  color: #ff4d4d;
+  color: var(--ipx-red);
 }
 
 .ip-task-close {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 38px;
+  min-height: 38px;
   padding: 0;
   font-size: 15px;
   line-height: 1;
-  color: #8b9bb4;
+  color: var(--ipx-dim);
 }
 
 .ip-task-close:hover:not(:disabled) {
-  color: #ff4d4d;
-  border-color: #ff4d4d;
+  color: var(--ipx-red);
+  border-color: var(--ipx-red);
 }
 
 .ip-task-instruction {
-  padding: 8px 12px;
+  padding: 7px 10px;
   font-size: 12px;
-  color: #8b9bb4;
-  border-bottom: 1px solid #263043;
+  color: var(--ipx-dim);
+  border-bottom: 2px solid var(--ipx-void);
 }
 
 .ip-task-body {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
   overflow: auto;
 }
 
@@ -210,20 +213,21 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 12px;
-  border-top: 1px solid #263043;
-  font-size: 10px;
+  padding: 6px 10px;
+  border-top: 2px solid var(--ipx-void);
+  background: var(--ipx-void);
+  font-size: 11px;
   letter-spacing: 0.06em;
-  color: #8b9bb4;
+  color: var(--ipx-dim);
 }
 
 .ip-task-hint[data-alert="true"] {
-  color: #ff4d4d;
+  color: var(--ipx-red);
 }
 
 .ip-task-tag {
   margin-left: auto;
-  color: #38fedc;
+  color: var(--ipx-cyan);
   white-space: nowrap;
 }
 
@@ -232,47 +236,319 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 190px;
+  gap: 8px;
+  min-height: 200px;
   padding: 18px;
   text-align: center;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  border: 2px solid var(--ipx-steel);
 }
 
 .ip-task-result[data-result="won"] {
-  border-color: rgba(204, 255, 0, 0.55);
-  background: rgba(204, 255, 0, 0.06);
+  border-color: var(--ipx-lime);
+  background: rgba(204, 255, 0, 0.07);
 }
 
 .ip-task-result[data-result="lost"] {
-  border-color: rgba(255, 77, 77, 0.6);
+  border-color: var(--ipx-red);
   background: rgba(255, 77, 77, 0.08);
 }
 
 .ip-task-result-title {
   font-size: 20px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
 }
 
 .ip-task-result[data-result="won"] .ip-task-result-title {
-  color: #ccff00;
+  color: var(--ipx-lime);
 }
 
 .ip-task-result[data-result="lost"] .ip-task-result-title {
-  color: #ff4d4d;
+  color: var(--ipx-red);
 }
 
 .ip-task-result-note {
   font-size: 12px;
-  color: #8b9bb4;
+  color: var(--ipx-dim);
 }
 
-/* ---------- 1. wiring --------------------------------------------- */
+/* ---------- shared cabinet ---------------------------------------- */
+
+.ip-arc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ip-arc-marquee {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--ipx-void);
+  border: 2px solid var(--ipx-steel);
+  border-left: 6px solid var(--ipx-lime);
+}
+
+.ip-arc-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--ipx-lime);
+}
+
+.ip-arc-tag {
+  margin-left: auto;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ipx-cyan);
+}
+
+.ip-arc-hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 4px 8px;
+  background: var(--ipx-well);
+  border: 2px solid var(--ipx-steel);
+}
+
+.ip-arc-hud-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ip-arc-hud-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ipx-dim);
+}
+
+.ip-arc-hud-value {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ipx-amber);
+  font-variant-numeric: tabular-nums;
+}
+
+.ip-arc-note,
+.ip-arc-hint {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ipx-dim);
+}
+
+.ip-arc-status {
+  min-height: 16px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ipx-cyan);
+}
+
+.ip-arc-status[data-alert="true"] {
+  color: var(--ipx-red);
+}
+
+/* screen: a hard-edged well holding an integer-scaled bitmap */
+
+.ip-arc-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  height: clamp(220px, 46vh, 420px);
+  min-height: 180px;
+  padding: 4px;
+  background: var(--ipx-void);
+  border: 2px solid var(--ipx-steel);
+  overflow: hidden;
+}
+
+/* The frame is an outline, not a border: the bitmap box stays an exact whole
+ * multiple of the logical grid, so no pixel is ever a fraction wide. */
+.ip-arc-screen {
+  position: relative;
+  background: var(--ipx-screen);
+  outline: 3px solid var(--ipx-steel-hi);
+  image-rendering: pixelated;
+}
+
+.ip-arc-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
+}
+
+/* controls: chunky cabinet buttons, never under 30px tall */
+
+.ip-arc-pad {
+  display: grid;
+  gap: 6px;
+}
+
+.ip-arc-btn {
+  min-height: 46px;
+  min-width: 34px;
+  padding: 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ipx-ink);
+  background: var(--ipx-well);
+  border: 2px solid var(--ipx-steel-hi);
+  box-shadow: inset -2px -2px 0 var(--ipx-void), inset 2px 2px 0 rgba(232, 237, 247, 0.08);
+}
+
+.ip-arc-btn:active:not(:disabled) {
+  background: var(--ipx-steel);
+  box-shadow: inset 2px 2px 0 var(--ipx-void);
+}
+
+.ip-arc-btn[data-primary="true"] {
+  background: var(--ipx-lime);
+  border-color: var(--ipx-lime);
+  color: var(--ipx-void);
+}
+
+.ip-arc-btn[data-primary="true"]:hover:not(:disabled) {
+  border-color: var(--ipx-ink);
+}
+
+.ip-arc-btn[data-primary="true"]:active:not(:disabled) {
+  background: var(--ipx-amber);
+}
+
+.ip-arc-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(280px, 100%);
+  margin: 0 auto;
+}
+
+.ip-arc-dpad-gap {
+  border: 2px solid var(--ipx-void);
+  background: var(--ipx-void);
+}
+
+/* ---------- 3. memory pads ---------------------------------------- */
+
+.ip-arc-mempad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+  width: min(100%, 420px);
+  margin: 0 auto;
+  background: var(--ipx-void);
+  border: 2px solid var(--ipx-steel);
+}
+
+.ip-arc-mempad-key {
+  min-height: 88px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ipx-dim);
+  background: var(--ipx-well);
+  border: 2px solid var(--ipx-steel-hi);
+  box-shadow: inset -2px -2px 0 var(--ipx-void);
+}
+
+.ip-arc-mempad-key[data-lit="true"] {
+  background: var(--ipx-lime);
+  border-color: var(--ipx-lime);
+  color: var(--ipx-void);
+}
+
+.ip-arc-mempad-key[data-taken="true"] {
+  border-color: var(--ipx-cyan);
+}
+
+/* ---------- 4. minefield ------------------------------------------ */
+
+.ip-arc-minegrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px;
+  padding: 6px;
+  width: min(100%, 306px);
+  margin: 0 auto;
+  background: var(--ipx-void);
+  border: 2px solid var(--ipx-steel);
+}
+
+.ip-arc-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 34px;
+  min-width: 0;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--ipx-steel);
+  border: 2px solid var(--ipx-steel-hi);
+  box-shadow: inset -2px -2px 0 var(--ipx-void), inset 2px 2px 0 rgba(232, 237, 247, 0.12);
+  color: var(--ipx-ink);
+}
+
+.ip-arc-cell[data-state="open"] {
+  background: var(--ipx-screen);
+  border-color: var(--ipx-steel);
+  box-shadow: none;
+  color: var(--ipx-cyan);
+}
+
+.ip-arc-cell[data-tone="one"] {
+  color: var(--ipx-cyan);
+}
+
+.ip-arc-cell[data-tone="two"] {
+  color: var(--ipx-lime);
+}
+
+.ip-arc-cell[data-tone="three"] {
+  color: var(--ipx-amber);
+}
+
+.ip-arc-cell[data-state="flag"] {
+  background: var(--ipx-well);
+  border-color: var(--ipx-amber);
+  color: var(--ipx-amber);
+  box-shadow: none;
+}
+
+.ip-arc-cell[data-state="boom"] {
+  background: var(--ipx-red);
+  border-color: var(--ipx-red);
+  color: var(--ipx-void);
+}
+
+.ip-arc-cell[data-cursor="true"] {
+  outline: 3px solid var(--ipx-lime);
+  outline-offset: -3px;
+}
+
+/* ---------- 5. wiring --------------------------------------------- */
+
+.ip-wire {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 .ip-wire-board {
   position: relative;
+  padding: 8px;
+  background: var(--ipx-void);
+  border: 2px solid var(--ipx-steel);
 }
 
 .ip-wire-grid {
@@ -291,18 +567,18 @@
 
 .ip-wire-lines {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
   pointer-events: none;
   overflow: visible;
 }
 
 .ip-wire-lines path {
   fill: none;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 4;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
 }
 
 .ip-wire-node {
@@ -311,36 +587,36 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
+  min-height: 48px;
   padding: 6px 10px;
-  background: #0f1520;
-  border: 1px solid #263043;
-  border-radius: 6px;
+  background: var(--ipx-well);
+  border: 2px solid var(--ipx-steel-hi);
+  box-shadow: inset -2px -2px 0 var(--ipx-void);
 }
 
 .ip-wire-node[data-picked="true"] {
-  border-color: #ccff00;
-  background: rgba(204, 255, 0, 0.09);
-  box-shadow: 0 0 0 1px rgba(204, 255, 0, 0.4) inset;
+  border-color: var(--ipx-lime);
+  background: rgba(204, 255, 0, 0.1);
+  box-shadow: inset 0 0 0 2px var(--ipx-lime);
 }
 
 .ip-wire-node[data-linked="true"] {
-  border-color: #38fedc;
-  background: rgba(56, 254, 220, 0.08);
+  border-color: var(--ipx-cyan);
+  background: rgba(56, 254, 220, 0.1);
 }
 
 .ip-wire-swatch {
   flex: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid rgba(11, 14, 20, 0.85);
-  box-shadow: 0 0 6px rgba(232, 237, 247, 0.22);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--ipx-void);
+  box-shadow: inset -2px -2px 0 rgba(5, 7, 12, 0.55), inset 2px 2px 0 rgba(232, 237, 247, 0.35);
 }
 
 .ip-wire-tag {
   font-size: 11px;
-  letter-spacing: 0.14em;
-  color: #8b9bb4;
+  letter-spacing: 0.16em;
+  color: var(--ipx-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -350,500 +626,14 @@
   justify-content: flex-end;
 }
 
-.ip-wire-count {
-  margin-top: 10px;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: #8b9bb4;
-}
-
-/* ---------- 2. keypad --------------------------------------------- */
-
-.ip-key {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.ip-key-screen {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(300px, 100%);
-  padding: 8px 12px;
-  background: #0b0e14;
-  border: 1px solid #263043;
-  border-radius: 6px;
-}
-
-.ip-key-screen-label {
-  font-size: 9px;
-  letter-spacing: 0.18em;
-  color: #8b9bb4;
-  min-width: 62px;
-}
-
-.ip-key-code,
-.ip-key-entry {
-  display: flex;
-  gap: 6px;
-}
-
-.ip-key-chip {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 34px;
-  background: #141a24;
-  border: 1px solid #263043;
-  border-radius: 4px;
-  font-size: 17px;
-  color: #8b9bb4;
-}
-
-.ip-key-code .ip-key-chip {
-  color: #ccff00;
-  border-color: rgba(204, 255, 0, 0.35);
-}
-
-.ip-key-entry .ip-key-chip[data-filled="true"] {
-  color: #e8edf7;
-  border-color: #38fedc;
-  background: rgba(56, 254, 220, 0.1);
-}
-
-.ip-key-pad {
-  display: grid;
-  grid-template-columns: repeat(3, 56px);
-  gap: 8px;
-}
-
-.ip-key-button {
-  min-width: 56px;
-  min-height: 48px;
-  padding: 0;
-  font-size: 17px;
-  background: #1b2431;
-  border-color: #263043;
-}
-
-.ip-key-button[data-action="del"],
-.ip-key-button[data-action="ok"] {
-  font-size: 12px;
-  letter-spacing: 0.1em;
-}
-
-.ip-key-button[data-action="ok"] {
-  background: #ccff00;
-  border-color: #ccff00;
-  color: #0b0e14;
-  font-weight: 700;
-}
-
-.ip-key-button[data-action="ok"]:hover:not(:disabled) {
-  background: #d9ff3d;
-  border-color: #d9ff3d;
-}
-
-.ip-key-note {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: #8b9bb4;
-}
-
-.ip-key-note[data-flash="true"] {
-  color: #ff4d4d;
-}
-
-/* ---------- 3. dials ---------------------------------------------- */
-
-.ip-dial-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ip-dial-cell {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 4px;
-  border: 1px solid #263043;
-  border-radius: 8px;
-  background: #0f1520;
-  outline: none;
-}
-
-.ip-dial-cell[data-active="true"],
-.ip-dial-cell:focus-visible {
-  border-color: #ccff00;
-}
-
-.ip-dial-cell[data-aligned="true"] {
-  border-color: rgba(204, 255, 0, 0.6);
-  background: rgba(204, 255, 0, 0.05);
-}
-
-.ip-dial-knob {
-  width: 100%;
-  max-width: 104px;
-  aspect-ratio: 1 / 1;
-  display: block;
-  touch-action: none;
-  cursor: grab;
-}
-
-.ip-dial-face {
-  fill: #141a24;
-  stroke: #263043;
-  stroke-width: 2;
-}
-
-.ip-dial-tick {
-  stroke: #3a4763;
-  stroke-width: 2;
-}
-
-.ip-dial-mark {
-  fill: #ccff00;
-}
-
-.ip-dial-needle line {
-  stroke: #38fedc;
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-
-.ip-dial-needle circle {
-  fill: #e8edf7;
-}
-
-.ip-dial-cell[data-aligned="true"] .ip-dial-needle line {
-  stroke: #ccff00;
-}
-
-.ip-dial-tag {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  padding: 1px 4px;
-  font-size: 8px;
-  letter-spacing: 0.12em;
-  color: #ff4d4d;
-  border: 1px solid rgba(255, 77, 77, 0.5);
-  border-radius: 3px;
-}
-
-.ip-dial-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-}
-
-.ip-dial-button {
-  flex: none;
-  width: 44px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  font-size: 15px;
-}
-
-.ip-dial-readout {
-  min-width: 34px;
-  text-align: center;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #8b9bb4;
-}
-
-.ip-dial-readout[data-aligned="true"] {
-  color: #ccff00;
-}
-
-.ip-dial-note {
-  margin-top: 10px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #8b9bb4;
-}
-
-/* ---------- 4. calibrate ------------------------------------------ */
-
-.ip-cal {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ip-cal-gauge {
-  position: relative;
-  height: 64px;
-  background: #0b0e14;
-  border: 1px solid #263043;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.ip-cal-track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background: #263043;
-}
-
-.ip-cal-zone {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: rgba(204, 255, 0, 0.22);
-  border-left: 1px solid rgba(204, 255, 0, 0.7);
-  border-right: 1px solid rgba(204, 255, 0, 0.7);
-}
-
-.ip-cal-needle {
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  width: 4px;
-  margin-left: -2px;
-  background: #38fedc;
-  border-radius: 2px;
-}
-
-.ip-cal-needle[data-in-zone="true"] {
-  background: #ccff00;
-  box-shadow: 0 0 12px rgba(204, 255, 0, 0.7);
-}
-
-.ip-cal-pips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ip-cal-pip {
-  width: 12px;
-  height: 12px;
-  border: 1px solid #3a4763;
-  border-radius: 3px;
-}
-
-.ip-cal-pip[data-done="true"] {
-  background: #ccff00;
-  border-color: #ccff00;
-}
-
-.ip-cal-pip-label {
-  margin-left: 4px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: #8b9bb4;
-}
-
-.ip-cal-button {
-  width: 100%;
-  min-height: 58px;
-  font-size: 15px;
-}
-
-.ip-cal-note {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #8b9bb4;
-}
-
-/* ---------- 5. sample --------------------------------------------- */
-
-.ip-sample-row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.ip-sample-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 4px;
-  min-height: 104px;
-  background: #0f1520;
-  border: 1px solid #263043;
-  border-radius: 8px;
-}
-
-.ip-sample-card:hover:not(:disabled) {
-  border-color: #38fedc;
-}
-
-.ip-sample-plate {
-  display: grid;
-  grid-template-columns: repeat(3, 14px);
-  grid-template-rows: repeat(3, 14px);
-  gap: 2px;
-  padding: 4px;
-  background: #0b0e14;
-  border: 1px solid #1d2735;
-  border-radius: 4px;
-}
-
-.ip-sample-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: transparent;
-}
-
-.ip-sample-dot[data-lit="true"] {
-  background: radial-gradient(circle at 35% 35%, #7ffbe9, #38fedc 55%, #159e8a);
-}
-
-.ip-sample-tag {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  color: #8b9bb4;
-}
-
-.ip-sample-note {
-  margin-top: 10px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #8b9bb4;
-}
-
-/* ---------- 6. reboot --------------------------------------------- */
-
-.ip-reboot {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ip-reboot-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  width: min(340px, 100%);
-  margin: 0 auto;
-}
-
-.ip-reboot-tile {
-  position: relative;
-  min-height: 74px;
-  background: #0f1520;
-  border: 1px solid #263043;
-  border-radius: 8px;
-}
-
-.ip-reboot-tile[data-lit="true"] {
-  background: #ccff00;
-  border-color: #ccff00;
-  color: #0b0e14;
-}
-
-.ip-reboot-number {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #8b9bb4;
-}
-
-.ip-reboot-tile[data-lit="true"] .ip-reboot-number {
-  color: #0b0e14;
-}
-
-.ip-reboot-tile[data-step]::after {
-  content: attr(data-step);
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  font-size: 11px;
-  color: #0b0e14;
-}
-
-.ip-reboot-echo {
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 22px;
-  height: 3px;
-  border-radius: 2px;
-  background: #263043;
-}
-
-.ip-reboot-echo[data-set="true"] {
-  background: #38fedc;
-}
-
-.ip-reboot-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.ip-reboot-status {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: #38fedc;
-}
-
-.ip-reboot-replay {
-  margin-left: auto;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-}
-
-.ip-reboot-note {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: #8b9bb4;
-}
-
-/* ---------- motion ------------------------------------------------- */
-
-/* Only non-essential motion lives here; the minigames stay playable without it. */
-.ip-task:not(.ip-task-reduced) .ip-wire-node[data-picked="true"] {
-  transition: border-color 120ms ease-out, background 120ms ease-out;
-}
-
-.ip-task:not(.ip-task-reduced) .ip-reboot-tile {
-  transition: background 90ms linear, border-color 90ms linear, color 90ms linear;
-}
-
-.ip-task:not(.ip-task-reduced) .ip-cal-zone {
-  transition: left 120ms linear, width 120ms linear;
-}
-
-.ip-task-reduced .ip-task-bar-fill,
-.ip-task-reduced .ip-wire-node,
-.ip-task-reduced .ip-reboot-tile,
-.ip-task-reduced .ip-cal-zone,
-.ip-task-reduced .ip-cal-needle {
-  transition: none;
-}
+/* ---------- state tints ------------------------------------------- */
 
-.ip-task-reduced .ip-task-bar-fill {
-  /* Stepped timer: the fill jumps in 5% blocks instead of sweeping. */
-  transition: none;
+.ip-task-body[data-status="won"] .ip-arc {
+  border-color: var(--ipx-lime);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ip-task .ip-task-bar-fill,
-  .ip-task .ip-wire-node,
-  .ip-task .ip-reboot-tile,
-  .ip-task .ip-cal-zone,
-  .ip-task .ip-cal-needle {
-    transition: none;
-  }
+.ip-task-body[data-status="lost"] .ip-arc {
+  border-color: var(--ipx-red);
 }
 
 /* ---------- narrow frames ----------------------------------------- */
@@ -855,8 +645,8 @@
   }
 
   .ip-task-head {
-    gap: 8px;
-    padding: 8px 9px 7px;
+    gap: 6px;
+    padding: 7px 8px 6px;
   }
 
   .ip-task-station {
@@ -864,37 +654,81 @@
   }
 
   .ip-task-bar {
-    width: 68px;
+    width: 56px;
   }
 
   .ip-task-seconds {
-    min-width: 32px;
+    min-width: 30px;
   }
 
   .ip-task-body {
-    padding: 9px;
+    padding: 8px;
   }
 
   .ip-task-instruction {
-    padding: 7px 9px;
+    padding: 6px 8px;
     font-size: 11px;
   }
 
-  .ip-dial-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .ip-arc-title {
+    font-size: 13px;
+    letter-spacing: 0.12em;
   }
 
-  .ip-sample-plate {
-    grid-template-columns: repeat(3, 10px);
-    grid-template-rows: repeat(3, 10px);
+  .ip-arc-stage {
+    min-height: 180px;
   }
 
-  .ip-sample-dot {
-    width: 10px;
-    height: 10px;
+  .ip-arc-pad {
+    gap: 5px;
   }
 
-  .ip-key-pad {
-    grid-template-columns: repeat(3, minmax(48px, 56px));
+  .ip-arc-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .ip-arc-mempad-key {
+    min-height: 72px;
+    font-size: 18px;
+  }
+
+  .ip-arc-cell {
+    min-height: 30px;
+    font-size: 14px;
+  }
+
+  .ip-wire-grid {
+    height: 202px;
+  }
+
+  .ip-wire-col {
+    grid-template-rows: repeat(4, 43px);
+  }
+
+  .ip-wire-node {
+    min-height: 43px;
+    padding: 4px 6px;
+  }
+}
+
+/* ---------- motion ------------------------------------------------- */
+
+/* The games are tick-driven; only decoration ever eases, and reduced motion
+ * turns even that off. */
+.ip-task:not(.ip-task-reduced) .ip-arc-mempad-key,
+.ip-task:not(.ip-task-reduced) .ip-arc-cell {
+  transition: background 90ms steps(2, end), border-color 90ms steps(2, end), color 90ms steps(2, end);
+}
+
+.ip-task-reduced .ip-arc-mempad-key,
+.ip-task-reduced .ip-arc-cell {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-task .ip-arc-mempad-key,
+  .ip-task .ip-arc-cell {
+    transition: none;
   }
 }

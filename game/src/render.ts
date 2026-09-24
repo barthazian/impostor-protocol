@@ -1,10 +1,20 @@
 /**
  * IMPOSTOR PROTOCOL — station renderer.
  *
- * Owns the whole fixed 960x640 backing store: metal floors and walls, task
- * consoles, vents, the emergency button, depth-sorted actors (the player's
- * canonical Friend mask, original crewmate bot art, dead bodies), sabotage
- * washes, the fog of war and the minimap.
+ * Owns the whole canvas, sized to the frame's CSS box at one world unit per CSS
+ * pixel: metal floors and walls, task
+ * consoles, vents, the emergency button, depth-sorted actors, sabotage washes,
+ * the fog of war and the minimap.
+ *
+ * CHARACTER ART IS NOT DRAWN HERE. Every character — the player, the six NPC
+ * crewmates, the impostor and every body — is a canonical Rare Friends mask read
+ * from the chain by `src/crew-art.ts` (see that file for the reads and the
+ * honest fallback) and blitted here as a 16x16 pixel grid at integer 5x, exactly
+ * the way the SDK's own world renderer blits a Friend. The station FURNITURE
+ * (floors, walls, vents, consoles, the emergency button) is still code-drawn
+ * geometry, and says so: the SDK ships no station interior art — its world module
+ * renders isometric garden/courtyard scenes and free-standing props, which does
+ * not fit this top-down plan (see SUBMISSION/notes in the art check).
  *
  * Rules held here: no React, no DOM beyond the canvas we were handed, no
  * randomness of any kind (every frame is a pure function of `MatchState` +
@@ -12,15 +22,38 @@
  * objects, so a 60 fps loop stays flat.
  */
 
-import { CREW_COLORS, type Actor, type CrewColorId, type MatchState, type Station, type TaskStation, type Vec, type Vent, type Zone } from "./types";
+import { CREW_COLORS, type Actor, type ActorId, type CrewColorId, type MatchState, type Role, type Station, type TaskStation, type Vec, type Vent, type Zone } from "./types";
 import { spriteFrame, type GenerationSprites } from "@rarefriends/friendsdk/sprites";
+import { IMPOSTOR_HALO, IMPOSTOR_TINT, crewArtDiagnostics, haloKept, maskFallbackEntry, type CrewArt, type CrewArtEntry } from "./crew-art";
 
-export const VIEW_WIDTH = 960;
-export const VIEW_HEIGHT = 640;
+/**
+ * The station view in CSS pixels. Mutable on purpose: createRenderer re-syncs
+ * these from the canvas's own box (one initial sync, then a ResizeObserver), so
+ * a portrait frame shows a portrait slice of the station instead of clipping a
+ * fixed 960x640 render. Every drawing coordinate in this file is a CSS pixel, so
+ * world units and CSS pixels stay 1:1 at any frame size and taps stay exact.
+ */
+export let VIEW_WIDTH = 960;
+export let VIEW_HEIGHT = 640;
+
+/** Backing-store multiplier: 1 to 2, never more. A 3x store triples the fill
+ *  cost for a difference no eye can see, and below 1 the art would go soft. */
+function pixelRatio(): number {
+  const raw = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+  return raw < 1 ? 1 : raw > 2 ? 2 : raw;
+}
 
 export type RenderOptions = Readonly<{
   /** Canonical artwork loaded by index.tsx via createFriendReader(). */
   playerSprites: GenerationSprites;
+  /** Canonical artwork for every NPC on the station, resolved at round start. */
+  crewArt: CrewArt | null;
+  /**
+   * Actors the player has ALREADY been shown to be impostors. Empty during play,
+   * on purpose: the treated frame must never be a live tell. `revealImpostorIds()`
+   * in src/crew-art.ts is the only thing that fills this.
+   */
+  revealed: readonly ActorId[];
   /** Resolved hex used to tint the player's canonical mask like a crew suit. */
   playerColor: string;
   /** Vision radius in world pixels (210 normally, 90 while the lights are out). */
@@ -35,6 +68,8 @@ export type Renderer = Readonly<{
   paint(state: MatchState, options: RenderOptions): void;
   /** Convert a pointer event position (CSS pixels relative to the canvas) into world coordinates. */
   screenToWorld(clientX: number, clientY: number, canvasRect: { left: number; top: number; width: number; height: number }): Vec;
+  /** What the last paint put on the canvas, one record per visible actor. */
+  diagnostics(): readonly ActorBlit[];
   readonly camera: Vec;
 }>;
 
@@ -109,27 +144,9 @@ function mixHex(hex: string, target: number, amount: number): string {
   return `#${((1 << 24) | (mix(r) << 16) | (mix(g) << 8) | mix(b)).toString(16).slice(1)}`;
 }
 
-type Shades = Readonly<{ body: string; dark: string; light: string; rim: string; visor: string }>;
-
-/** Precomputed bot shades: one entry per crew colour, built once at module load. */
-const CREW_SHADES: Readonly<Record<string, Shades>> = Object.freeze(Object.fromEntries(
-  Object.keys(CREW_COLORS).map(id => {
-    const hex = CREW_COLORS[id as CrewColorId];
-    return [id, Object.freeze({
-      body: hex,
-      dark: mixHex(hex, 0, 0.44),
-      light: mixHex(hex, 255, 0.3),
-      rim: mixHex(hex, 0, 0.7),
-      visor: "#b9dcf2",
-    })];
-  }),
-));
-const FALLBACK_SHADES: Shades = Object.freeze({
-  body: "#c6d2e6", dark: "#6f7a8c", light: "#e6ecf5", rim: "#3c4452", visor: "#b9dcf2",
-});
-
-function shadesFor(color: CrewColorId): Shades {
-  return CREW_SHADES[color] ?? FALLBACK_SHADES;
+/** The suit tint a crewmate wears: the roster colour, or a neutral plate. */
+function crewTint(color: CrewColorId): string {
+  return CREW_COLORS[color] ?? "#d6e0f0";
 }
 
 function accentFor(zone: Zone): string {
@@ -197,12 +214,19 @@ function paintLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: n
 
 type ConsoleState = "available" | "active" | "done";
 
+/** The live viewport observer per canvas. Weak so an unmounted canvas can be collected. */
+const VIEW_OBSERVERS = new WeakMap<HTMLCanvasElement, ResizeObserver>();
+
 type Scene = {
   readonly ctx: CanvasRenderingContext2D;
   readonly camera: { x: number; y: number };
   readonly fog: CanvasGradient;
-  readonly reactor: CanvasGradient;
-  readonly o2: CanvasGradient;
+  /** Rebuilt by the viewport sync: both centre on the middle of the view. */
+  reactor: CanvasGradient;
+  o2: CanvasGradient;
+  /** Backing-store scale. Screen-space passes re-apply it instead of resetting
+   *  to identity, which would draw them in device pixels and slide the world. */
+  ratio: number;
   readonly order: number[];
   /** Station ids whose console has been observed to complete; presentation-only inference. */
   readonly completed: Set<string>;
@@ -211,6 +235,14 @@ type Scene = {
   station: Station | null;
   activeStation: string | null;
   tasksDone: number;
+  /** Reused per-actor blit records for the last paint, published by diagnostics(). */
+  readonly blits: MutableBlit[];
+  /** One fallback entry per actor, so a frame painted before the art lands allocates nothing. */
+  readonly maskFallbacks: Map<string, CrewArtEntry>;
+  /** The artwork the canvas dataset already describes, so the note is written once. */
+  publishedArt: CrewArt | null;
+  /** The reveal list already published, so a live frame writes nothing. */
+  publishedRevealed: string;
 };
 
 function buildFogGradient(ctx: CanvasRenderingContext2D): CanvasGradient {
@@ -233,9 +265,6 @@ function buildVignette(ctx: CanvasRenderingContext2D, kind: "reactor" | "o2"): C
 }
 
 export function createRenderer(canvas: HTMLCanvasElement): Renderer {
-  // The backing store is fixed; CSS owns the presentation scale.
-  if (canvas.width !== VIEW_WIDTH) canvas.width = VIEW_WIDTH;
-  if (canvas.height !== VIEW_HEIGHT) canvas.height = VIEW_HEIGHT;
   const ctx = canvas.getContext("2d");
   const camera = { x: 0, y: 0 };
 
@@ -246,6 +275,7 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
       screenToWorld(clientX: number, clientY: number, canvasRect: { left: number; top: number; width: number; height: number }): Vec {
         return { x: camera.x + (clientX - canvasRect.left), y: camera.y + (clientY - canvasRect.top) };
       },
+      diagnostics(): readonly ActorBlit[] { return Object.freeze([]); },
       get camera(): Vec { return camera; },
     });
   }
@@ -253,7 +283,7 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
   ctx.imageSmoothingEnabled = false;
 
   const scene: Scene = {
-    ctx, camera,
+    ctx, camera, ratio: 1,
     fog: buildFogGradient(ctx),
     reactor: buildVignette(ctx, "reactor"),
     o2: buildVignette(ctx, "o2"),
@@ -263,14 +293,62 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
     station: null,
     activeStation: null,
     tasksDone: 0,
+    blits: [],
+    maskFallbacks: new Map<string, CrewArtEntry>(),
+    publishedArt: null,
+    publishedRevealed: "",
   };
+
+  /**
+   * Bind the world to the canvas's own box: one world unit per CSS pixel, with
+   * the backing store scaled by the device ratio so the art stays crisp while
+   * every coordinate this file draws in stays a CSS pixel.
+   */
+  const syncViewport = (force = false): boolean => {
+    const box = canvas.getBoundingClientRect();
+    // A hidden or unlaid-out frame measures 0x0: keep the last known view rather
+    // than collapsing the world to a single pixel.
+    if (box.width < 1 || box.height < 1) return false;
+    const width = Math.round(box.width), height = Math.round(box.height);
+    const ratio = pixelRatio();
+    const backingWidth = Math.max(1, Math.round(width * ratio));
+    const backingHeight = Math.max(1, Math.round(height * ratio));
+    if (!force && width === VIEW_WIDTH && height === VIEW_HEIGHT &&
+      backingWidth === canvas.width && backingHeight === canvas.height) return false;
+    VIEW_WIDTH = width;
+    VIEW_HEIGHT = height;
+    scene.ratio = ratio;
+    // Attributes, never CSS: the stylesheet owns the canvas box, so resizing the
+    // store cannot feed back into layout and re-trigger the observer.
+    canvas.width = backingWidth;
+    canvas.height = backingHeight;
+    // The vignettes are centred on the middle of the view, so they only fit one size.
+    scene.reactor = buildVignette(ctx, "reactor");
+    scene.o2 = buildVignette(ctx, "o2");
+    return true;
+  };
+
+  syncViewport(true);
+
+  if (typeof ResizeObserver !== "undefined") {
+    // One observer per canvas: a re-created renderer (new match) replaces the old.
+    VIEW_OBSERVERS.get(canvas)?.disconnect();
+    const observer = new ResizeObserver(() => { syncViewport(); });
+    observer.observe(canvas);
+    VIEW_OBSERVERS.set(canvas, observer);
+  }
 
   return Object.freeze({
     paint(state: MatchState, options: RenderOptions): void {
+      // index.tsx mirrors VIEW_* back onto the width/height attributes, which can
+      // shrink the store below the device ratio; heal it before drawing.
+      if (canvas.width !== Math.round(VIEW_WIDTH * pixelRatio()) ||
+        canvas.height !== Math.round(VIEW_HEIGHT * pixelRatio())) syncViewport(true);
       paintMatch(scene, state, options);
     },
     screenToWorld(clientX: number, clientY: number, canvasRect: { left: number; top: number; width: number; height: number }): Vec {
-      // The canvas is scaled by CSS, so undo that scale before undoing the camera.
+      // The view tracks the canvas box, so this is the identity unless the frame
+      // is mid-resize; keep dividing by the rect so taps never drift.
       const scaleX = canvasRect.width > 0 ? VIEW_WIDTH / canvasRect.width : 1;
       const scaleY = canvasRect.height > 0 ? VIEW_HEIGHT / canvasRect.height : 1;
       return {
@@ -278,6 +356,7 @@ export function createRenderer(canvas: HTMLCanvasElement): Renderer {
         y: scene.camera.y + (clientY - canvasRect.top) * scaleY,
       };
     },
+    diagnostics(): readonly ActorBlit[] { return scene.blits; },
     get camera(): Vec { return scene.camera; },
   });
 }
@@ -318,9 +397,24 @@ function paintMatch(scene: Scene, state: MatchState, options: RenderOptions): vo
     node.dataset.phase = state.phase;
     node.dataset.prompt = state.prompt ? state.prompt.label : "";
     node.dataset.tasks = `${state.tasksDone}/${state.tasksTotal}`;
+    // Published once per round, not per frame: which token every NPC's pixels came
+    // from and the digest of the frames held for it, so an automated check can put
+    // the pixels on screen against the chain instead of taking our word for it.
+    if (scene.publishedArt !== options.crewArt) {
+      scene.publishedArt = options.crewArt;
+      node.dataset.crewArt = options.crewArt ? JSON.stringify(crewArtDiagnostics(options.crewArt)) : "";
+    }
+    // Who may wear the treated frame right now; empty in every live state.
+    const revealed = options.revealed.join(",");
+    if (scene.publishedRevealed !== revealed) {
+      scene.publishedRevealed = revealed;
+      node.dataset.revealed = revealed;
+    }
   }
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // Every screen-space pass re-applies the backing-store ratio: a plain identity
+  // transform here would draw in device pixels and slide the world off-frame.
+  ctx.setTransform(scene.ratio, 0, 0, scene.ratio, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   ctx.imageSmoothingEnabled = false;
@@ -336,8 +430,8 @@ function paintMatch(scene: Scene, state: MatchState, options: RenderOptions): vo
   ctx.restore();
 
   paintSabotage(ctx, state, options, scene);
-  paintFog(ctx, focus.x - camX, focus.y - camY, options.visionRadius, scene.fog);
-  if (options.showMinimap) paintMinimap(ctx, state, player, camX, camY);
+  paintFog(ctx, focus.x - camX, focus.y - camY, options.visionRadius, scene.fog, scene.ratio);
+  if (options.showMinimap) paintMinimap(ctx, state, player, camX, camY, scene.ratio);
 }
 
 /* ------------------------------------------------------------------ */
@@ -348,10 +442,12 @@ function paintBackdrop(ctx: CanvasRenderingContext2D, camX: number, camY: number
   ctx.fillStyle = SPACE;
   ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
   // Sparse stars in the gaps between zones; a slow parallax keeps the void alive.
+  // The grid is derived from the view so a frame wider than 960 still gets stars.
   const shiftX = ((camX * 0.06) % 112 + 112) % 112;
   const shiftY = ((camY * 0.06) % 112 + 112) % 112;
-  for (let gy = -1; gy < 8; gy++) {
-    for (let gx = -1; gx < 11; gx++) {
+  const columns = Math.ceil(VIEW_WIDTH / 112) + 2, rows = Math.ceil(VIEW_HEIGHT / 112) + 2;
+  for (let gy = -1; gy < rows; gy++) {
+    for (let gx = -1; gx < columns; gx++) {
       const seed = hash01(gx + 17, gy + 31);
       if (seed < 0.62) continue;
       const size = seed > 0.94 ? 2 : 1;
@@ -633,6 +729,108 @@ function paintEmergency(ctx: CanvasRenderingContext2D, at: Vec, options: RenderO
 /* actors                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A record of what the last paint actually put on the canvas, one per visible
+ * actor, updated in place so the paint loop allocates nothing. The renderer
+ * publishes these through `diagnostics()` so an automated check can compare the
+ * emitted pixels (mask rows, halo count, tint) against the chain without
+ * guessing — and so a test can prove the live impostor and a crewmate produce
+ * the same pixels.
+ */
+export type ActorBlit = Readonly<{
+  id: string; role: Role; isPlayer: boolean; reversedRole: boolean;
+  tokenId: string; source: string; tint: string; haloColor: string; haloIntact: boolean;
+  /** The 16 rows actually blitted, '#' for a filled pixel. */
+  rows: string; maskPixels: number; haloPixels: number;
+  /**
+   * Top-left of the 80x80 mask box in CANVAS pixels (CSS pixels inside the
+   * canvas box), which is what a reader needs to measure or crop these pixels
+   * out of the framebuffer. The painters draw in world coordinates, so
+   * recordBlit() subtracts the camera.
+   */
+  left: number; top: number;
+  alive: boolean;
+}>;
+
+type MutableBlit = { -readonly [K in keyof ActorBlit]: ActorBlit[K] };
+
+function recordBlit(scene: Scene, values: Omit<ActorBlit, "rows" | "left" | "top"> & { rows: readonly string[]; left: number; top: number }): void {
+  const index = scene.blits.length;
+  const target: MutableBlit = (scene.blits[index] as MutableBlit | undefined) ?? {} as MutableBlit;
+  target.id = values.id; target.role = values.role; target.isPlayer = values.isPlayer;
+  target.reversedRole = values.reversedRole; target.tokenId = values.tokenId; target.source = values.source;
+  target.tint = values.tint; target.haloColor = values.haloColor; target.haloIntact = values.haloIntact;
+  target.rows = values.rows.join("\n"); target.maskPixels = values.maskPixels;
+  target.haloPixels = values.haloPixels;
+  // World box in, canvas box out: every consumer of this record reads pixels back
+  // out of the framebuffer, so the camera offset has to be taken off here and
+  // nowhere else.
+  target.left = values.left - scene.camera.x; target.top = values.top - scene.camera.y;
+  target.alive = values.alive;
+  scene.blits[index] = target;
+}
+
+/**
+ * Turn canonical rows a quarter turn; a downed Friend still lies on the station as
+ * the same pixels, just rotated. No pixel is added, removed or redrawn.
+ */
+function rotateQuarter(rows: readonly string[]): readonly string[] {
+  const out: string[] = [];
+  for (let y = 0; y < 16; y++) {
+    let row = "";
+    for (let x = 0; x < 16; x++) row += rows[15 - x][y];
+    out.push(row);
+  }
+  return out;
+}
+
+/** The canonical mask blit: halo boxes, then the mask, integer 5x, clipped to 80x80. */
+function blitMask(ctx: CanvasRenderingContext2D, rows: readonly string[], left: number, top: number,
+  tint: string, haloColor: string, haloIntact: boolean): { maskPixels: number; haloPixels: number } {
+  let maskPixels = 0, haloPixels = 0;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, 80, 80);
+  ctx.clip();
+  ctx.fillStyle = haloColor;
+  for (let py = 0; py < 16; py++) {
+    const row = rows[py];
+    for (let px = 0; px < 16; px++) {
+      if (row.charCodeAt(px) !== 35) continue;
+      maskPixels++;
+      // The halo is a 15x15 box behind each mask pixel, exactly as the world
+      // renderer draws it; the damaged variant drops every third one.
+      if (!haloKept(px, py, haloIntact)) continue;
+      haloPixels++;
+      ctx.fillRect(left + px * 5 - 5, top + py * 5 - 5, 15, 15);
+    }
+  }
+  ctx.fillStyle = tint;
+  for (let py = 0; py < 16; py++) {
+    const row = rows[py];
+    for (let px = 0; px < 16; px++) {
+      if (row.charCodeAt(px) === 35) ctx.fillRect(left + px * 5, top + py * 5, 5, 5);
+    }
+  }
+  ctx.restore();
+  return { maskPixels, haloPixels };
+}
+
+/** Which canonical clips this actor draws from, honouring the honest fallback. */
+function crewEntry(options: RenderOptions, scene: Scene, actor: Actor): CrewArtEntry {
+  const resolved = options.crewArt?.byActor[actor.id];
+  if (resolved) return resolved;
+  // No artwork resolved (the first frames of a round, or a failed batch): the
+  // actor is still drawn from the PLAYER's canonical mask at its own hue, which
+  // the diagnostics report as `player-mask-fallback`. Never an invented Friend.
+  let cached = scene.maskFallbacks.get(actor.id);
+  if (!cached) {
+    cached = maskFallbackEntry(actor.id, crewTint(actor.color), options.playerSprites);
+    scene.maskFallbacks.set(actor.id, cached);
+  }
+  return cached;
+}
+
 function paintActors(ctx: CanvasRenderingContext2D, state: MatchState, options: RenderOptions, scene: Scene): void {
   const actors = state.actors;
   const order = scene.order;
@@ -649,10 +847,11 @@ function paintActors(ctx: CanvasRenderingContext2D, state: MatchState, options: 
     }
     order[j + 1] = value;
   }
+  scene.blits.length = 0;
   for (let i = 0; i < order.length; i++) {
     const actor = actors[order[i]];
     if (!actor.alive) {
-      paintBody(ctx, actor, options);
+      paintBody(ctx, actor, options, scene);
       continue;
     }
     if (actor.ventedUntil > state.time) {
@@ -660,7 +859,7 @@ function paintActors(ctx: CanvasRenderingContext2D, state: MatchState, options: 
       continue;
     }
     if (actor.isPlayer) paintPlayerActor(ctx, actor, options, scene);
-    else paintCrewmatePose(ctx, actor, options);
+    else paintFriendActor(ctx, actor, options, scene);
   }
 }
 
@@ -674,26 +873,15 @@ function paintPlayerActor(ctx: CanvasRenderingContext2D, actor: Actor, options: 
   const frame = options.reducedMotion ? 0 : ((Math.floor(options.time / 110) % 8) + 8) % 8;
   const rows = spriteFrame(options.playerSprites, actor.facing, walking, frame, scene.side).frame.rows;
   const left = x - 40, top = y - 75;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(left, top, 80, 80);
-  ctx.clip();
-  ctx.fillStyle = "#ffffff";
-  for (let py = 0; py < 16; py++) {
-    const row = rows[py];
-    for (let px = 0; px < 16; px++) {
-      if (row.charCodeAt(px) === 35) ctx.fillRect(left + px * 5 - 5, top + py * 5 - 5, 15, 15);
-    }
-  }
   // The suit tint replaces the mask pass; the silhouette stays byte-for-byte canonical.
-  ctx.fillStyle = options.playerColor || "#d6e0f0";
-  for (let py = 0; py < 16; py++) {
-    const row = rows[py];
-    for (let px = 0; px < 16; px++) {
-      if (row.charCodeAt(px) === 35) ctx.fillRect(left + px * 5, top + py * 5, 5, 5);
-    }
-  }
-  ctx.restore();
+  const blit = blitMask(ctx, rows, left, top, options.playerColor || "#d6e0f0", "#ffffff", true);
+  recordBlit(scene, {
+    id: actor.id, role: actor.role, isPlayer: true,
+    reversedRole: options.revealed.includes(actor.id) && actor.role === "impostor",
+    tokenId: options.playerSprites.tokenId.toString(), source: "chain", tint: options.playerColor || "#d6e0f0",
+    haloColor: "#ffffff", haloIntact: true, rows, maskPixels: blit.maskPixels, haloPixels: blit.haloPixels,
+    left, top, alive: true,
+  });
 
   const chevronY = y + 12 + (options.reducedMotion ? 0 : Math.round(Math.sin(options.time / 380) * 1.5));
   ctx.fillStyle = options.playerColor || "#d6e0f0";
@@ -710,95 +898,63 @@ function paintPlayerActor(ctx: CanvasRenderingContext2D, actor: Actor, options: 
   paintTag(ctx, actor.name, x, y - 84, options.playerColor || "#d6e0f0");
 }
 
-function paintCrewmatePose(ctx: CanvasRenderingContext2D, actor: Actor, options: RenderOptions): void {
-  const x = actor.pos.x, y = actor.pos.y;
-  const shades = shadesFor(actor.color);
-  const walking = actor.walking && actor.state !== "down";
-  const phase = (hashCode(actor.id) % 628) / 100;
-  const bob = options.reducedMotion ? 0 : Math.sin(options.time / 430 + phase) * 1.4;
-  const shuffle = walking && !options.reducedMotion ? Math.floor(options.time / 150) % 2 : 0;
-  const bodyTop = y - 46 + bob;
-
+/**
+ * An NPC crewmate: the same canonical blit as the player, from its own token.
+ *
+ * There is no impostor variant of this function. The treated frame (hostile tint,
+ * damaged halo) is drawn only when `options.revealed` names this actor, which the
+ * game fills in only after the answer is public — the kill the player caused or
+ * watched, the ejection count, the debrief. Until then an impostor NPC is
+ * pixel-identical to a crewmate: same canonical frames, same suit tint, same
+ * intact white halo — on the canvas, on the minimap and in every roster.
+ */
+function paintFriendActor(ctx: CanvasRenderingContext2D, actor: Actor, options: RenderOptions, scene: Scene): void {
+  const x = Math.round(actor.pos.x), y = Math.round(actor.pos.y);
+  if (actor.facing === "left" || actor.facing === "right") scene.side = actor.facing;
   paintShadow(ctx, x, y + 2, 40, 15);
 
-  // Legs: a two-frame shuffle while walking.
-  ctx.fillStyle = shades.dark;
-  roundRect(ctx, x - 10, y - 13 + (shuffle === 1 ? -2 : 0), 8, 13, 3);
-  ctx.fill();
-  roundRect(ctx, x + 2, y - 13 + (shuffle === 0 && walking ? -2 : 0), 8, 13, 3);
-  ctx.fill();
-  // Backpack.
-  ctx.fillStyle = shades.dark;
-  roundRect(ctx, x - 21, bodyTop + 3, 8, 22, 3);
-  ctx.fill();
-  // Capsule body.
-  ctx.fillStyle = shades.body;
-  roundRect(ctx, x - 16, bodyTop, 32, 40, 15);
-  ctx.fill();
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 2;
-  roundRect(ctx, x - 16, bodyTop, 32, 40, 15);
-  ctx.stroke();
-  ctx.fillStyle = shades.light;
-  ctx.globalAlpha = 0.45;
-  roundRect(ctx, x - 13, bodyTop + 3, 11, 12, 5);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  // Visor faces the direction of travel.
-  const visorX = x - 9 + (actor.facing === "left" ? -3 : actor.facing === "right" ? 5 : 2);
-  ctx.fillStyle = shades.visor;
-  roundRect(ctx, visorX, bodyTop + 6, 15, 11, 5);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(16, 20, 28, 0.75)";
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, visorX, bodyTop + 6, 15, 11, 5);
-  ctx.stroke();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-  ctx.fillRect(visorX + 2, bodyTop + 8, 4, 2);
+  const entry = crewEntry(options, scene, actor);
+  const walking = actor.walking && actor.state !== "down";
+  const frame = options.reducedMotion ? 0 : ((Math.floor(options.time / 110) % 8) + 8) % 8;
+  const rows = spriteFrame(entry.sprites, actor.facing, walking, frame, scene.side).frame.rows;
+  // `actor.role`, not a single recorded id: a seven-actor table deals TWO
+  // impostors (sim.ts), and `revealImpostorIds()` names every one of them once
+  // the answer is public. Gating on one id left the second revealed impostor
+  // drawn as an ordinary crewmate.
+  const treated = options.revealed.includes(actor.id) && actor.role === "impostor";
+  const tint = treated ? IMPOSTOR_TINT : entry.tint;
+  const haloColor = treated ? IMPOSTOR_HALO : "#ffffff";
+  const left = x - 40, top = y - 75;
+  const blit = blitMask(ctx, rows, left, top, tint, haloColor, !treated);
+  recordBlit(scene, {
+    id: actor.id, role: actor.role, isPlayer: false, reversedRole: treated,
+    tokenId: entry.tokenId.toString(), source: entry.source, tint, haloColor, haloIntact: !treated,
+    rows, maskPixels: blit.maskPixels, haloPixels: blit.haloPixels, left, top, alive: true,
+  });
 
-  paintTag(ctx, actor.name, x, bodyTop - 10, null);
+  paintTag(ctx, actor.name, x, y - 84, null);
 }
 
-function paintBody(ctx: CanvasRenderingContext2D, actor: Actor, options: RenderOptions): void {
-  const x = actor.pos.x, y = actor.pos.y;
-  const shades = shadesFor(actor.color);
+/**
+ * A downed Friend: the same canonical pixels, turned a quarter turn and knocked
+ * back in tone, plus the alert ring (a HUD affordance, not character art). The
+ * old capsule-and-bone body was hand-drawn and is gone.
+ */
+function paintBody(ctx: CanvasRenderingContext2D, actor: Actor, options: RenderOptions, scene: Scene): void {
+  const x = Math.round(actor.pos.x), y = Math.round(actor.pos.y);
+  const entry = crewEntry(options, scene, actor);
+  const rows = rotateQuarter(entry.sprites.clips.idle[scene.side][0].rows);
+  const treated = options.revealed.includes(actor.id) && actor.role === "impostor";
+  const tint = treated ? IMPOSTOR_TINT : mixHex(entry.tint, 0, 0.42);
+  const left = x - 40, top = y - 58;
   paintShadow(ctx, x, y + 4, 66, 26);
-
-  ctx.save();
-  ctx.translate(x, y - 4);
-  ctx.rotate(1.35);
-  ctx.fillStyle = shades.body;
-  roundRect(ctx, -15, -42, 30, 44, 14);
-  ctx.fill();
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 2;
-  roundRect(ctx, -15, -42, 30, 44, 14);
-  ctx.stroke();
-  ctx.fillStyle = shades.dark;
-  roundRect(ctx, -19, -38, 7, 20, 3);
-  ctx.fill();
-  // Bone-coloured visor marker: an X reads as "down" at a glance.
-  ctx.fillStyle = "#9fc4dc";
-  roundRect(ctx, -9, -37, 16, 12, 5);
-  ctx.fill();
-  ctx.strokeStyle = "#16232e";
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  ctx.moveTo(-6.5, -34.5);
-  ctx.lineTo(1.5, -27.5);
-  ctx.moveTo(1.5, -34.5);
-  ctx.lineTo(-6.5, -27.5);
-  ctx.stroke();
-  ctx.restore();
-
-  // Bone.
-  ctx.fillStyle = "#e8e6dc";
-  roundRect(ctx, x + 11, y - 34, 17, 6, 3);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x + 11, y - 33, 3.4, 0, TAU);
-  ctx.arc(x + 11, y - 29, 3.4, 0, TAU);
-  ctx.fill();
+  const blit = blitMask(ctx, rows, left, top, tint, treated ? IMPOSTOR_HALO : "#ffffff", !treated);
+  recordBlit(scene, {
+    id: actor.id, role: actor.role, isPlayer: false, reversedRole: treated,
+    tokenId: entry.tokenId.toString(), source: entry.source, tint,
+    haloColor: treated ? IMPOSTOR_HALO : "#ffffff", haloIntact: !treated,
+    rows, maskPixels: blit.maskPixels, haloPixels: blit.haloPixels, left, top, alive: false,
+  });
 
   // Pulsing alert ring so a body is findable through the fog of a dark room.
   const pulse = options.reducedMotion ? 1 : 1 + 0.14 * Math.sin(options.time / 300);
@@ -836,7 +992,7 @@ function paintVentedMarker(ctx: CanvasRenderingContext2D, actor: Actor, options:
 function paintSabotage(ctx: CanvasRenderingContext2D, state: MatchState, options: RenderOptions, scene: Scene): void {
   const kind = state.sabotage;
   if (kind === "none") return;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(scene.ratio, 0, 0, scene.ratio, 0, 0);
   ctx.globalAlpha = 1;
   if (kind === "lights") {
     ctx.fillStyle = "rgba(6, 10, 32, 0.42)";
@@ -872,9 +1028,9 @@ function paintSabotage(ctx: CanvasRenderingContext2D, state: MatchState, options
 /* fog of war                                                          */
 /* ------------------------------------------------------------------ */
 
-function paintFog(ctx: CanvasRenderingContext2D, screenX: number, screenY: number, visionRadius: number, gradient: CanvasGradient): void {
+function paintFog(ctx: CanvasRenderingContext2D, screenX: number, screenY: number, visionRadius: number, gradient: CanvasGradient, ratio: number): void {
   const radius = Math.max(8, visionRadius);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
 
@@ -888,11 +1044,11 @@ function paintFog(ctx: CanvasRenderingContext2D, screenX: number, screenY: numbe
   // Soft falloff inside the circle, authored once at FOG_ART and scaled into place.
   const scale = radius / FOG_ART;
   ctx.save();
-  ctx.setTransform(scale, 0, 0, scale, screenX, screenY);
+  ctx.setTransform(ratio * scale, 0, 0, ratio * scale, screenX * ratio, screenY * ratio);
   ctx.fillStyle = gradient;
   ctx.fillRect(-FOG_ART, -FOG_ART, FOG_ART * 2, FOG_ART * 2);
   ctx.restore();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
   ctx.strokeStyle = "rgba(168, 200, 255, 0.1)";
   ctx.lineWidth = 2;
@@ -914,10 +1070,10 @@ function zoneAt(station: Station, x: number, y: number): Zone | null {
   return null;
 }
 
-function paintMinimap(ctx: CanvasRenderingContext2D, state: MatchState, player: Actor | null, camX: number, camY: number): void {
+function paintMinimap(ctx: CanvasRenderingContext2D, state: MatchState, player: Actor | null, camX: number, camY: number, ratio: number): void {
   const width = 190, height = 130, margin = 12;
   const panelX = VIEW_WIDTH - width - margin, panelY = VIEW_HEIGHT - height - margin;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.fillStyle = "rgba(8, 12, 20, 0.74)";
   roundRect(ctx, panelX, panelY, width, height, 8);
   ctx.fill();

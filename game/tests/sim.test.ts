@@ -200,13 +200,19 @@ test("createMatch: actor, role, task and impostor counts follow the config", () 
   assert.deepEqual(six.state.actors.map(actor => actor.name), roster.map(entry => entry.name));
 });
 
-test("vision: 210 units normally, 90 while the lights are down", () => {
+test("vision: 400 units normally, 90 while the lights are down", () => {
+  // 210 -> WITNESS_RADIUS (400): the fog radius and the radius a kill is
+  // witnessed from are one number in sim.ts, because the renderer paints the fog
+  // at visionRadius(). At 220/210 a bot kill (never closer than
+  // BOT_KILL_SAFE_RADIUS = 220 to any third actor) could never be witnessed, so
+  // the kill event could never fire in a real round. BOT_KILL_SAFE_RADIUS is
+  // unchanged: how lethal the bots are is not what moved.
   const match = createMatch(config());
-  assert.equal(visionRadius(match.state), 210);
+  assert.equal(visionRadius(match.state), 400);
   match.state.sabotage = "lights";
   assert.equal(visionRadius(match.state), 90);
   match.state.sabotage = "reactor";
-  assert.equal(visionRadius(match.state), 210);
+  assert.equal(visionRadius(match.state), 400);
   match.state.sabotage = "none";
   for (const kind of ["none", "lights", "comms", "o2", "reactor"] as const) {
     assert.ok(sabotageLabel(kind).length > 0);
@@ -374,7 +380,7 @@ test("sabotage: lights persist until a crewmate fixes them at the matching conso
   assert.ok(state.prompt?.label.includes("lights"));
   match.interact();
   assert.equal(state.sabotage, "none", "repairing clears the sabotage");
-  assert.equal(visionRadius(state), 210, "vision comes back");
+  assert.equal(visionRadius(state), 400, "vision comes back");
   assert.ok(match.drainEvents().some(event => event.kind === "sabotage-fixed"));
 });
 

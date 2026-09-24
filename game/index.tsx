@@ -19,11 +19,12 @@ import { createFriendReader, type GenerationSprites } from "@rarefriends/friends
 import { createFriendSoundKit, type FriendSoundCue, type FriendSoundKit } from "@rarefriends/friendsdk/sounds";
 import { RF, type GamePlay, type GameSnapshot } from "@rarefriends/friendsdk/game";
 import {
-  CREW_COLORS, type CrewColorId, type Match, type MatchConfig, type MatchEvent, type PlayerInput,
-  type Role, type Tier,
+  CREW_COLORS, type ActorId, type CrewColorId, type Match, type MatchConfig, type MatchEvent,
+  type PlayerInput, type Role, type Tier,
 } from "./src/types";
 import { createMatch, createRoster, playerColorFor, sabotageLabel, visionRadius } from "./src/sim";
 import { VIEW_HEIGHT, VIEW_WIDTH, createRenderer, type Renderer } from "./src/render";
+import { crewArtDiagnostics, haloKept, loadCrewArt, revealImpostorIds, type CrewArt } from "./src/crew-art";
 import TaskOverlay, { type TaskCue } from "./src/tasks";
 import { Briefing, Debrief, Ejection, Hud, Lobby, Locker, Meeting, Settings, TaskList } from "./src/ui";
 import type { CacheOffer, CosmeticRow, InventoryRow, RosterEntry } from "./src/screens";
@@ -31,6 +32,13 @@ import { createRoomCode, createRng, hashSeed, normalizeRoomCode } from "./src/rn
 import "./style.css";
 
 const BOTS = 6;
+/**
+ * How long the killer's true form stays on screen after a kill the player caused
+ * or literally watched. It is the one mid-round reveal, and it is a beat, not a
+ * status: long enough to be seen, short enough that it is over before the next
+ * decision.
+ */
+const KILL_FLASH_MS = 4000;
 const EMPTY_INPUT: PlayerInput = Object.freeze({ up: false, down: false, left: false, right: false, destination: null });
 const TIER_PASSES: Readonly<Record<Tier, bigint>> = Object.freeze({ practice: 0n, standard: 1n, elite: 3n });
 
@@ -60,6 +68,7 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
   const [screen, setScreen] = useState<Screen>("lobby");
   const [overlay, setOverlay] = useState<Overlay>("none");
   const [match, setMatch] = useState<Match | null>(null);
+  const [crewArt, setCrewArt] = useState<CrewArt | null>(null);
   const [tier, setTier] = useState<Tier>("practice");
   const [roomCode, setRoomCode] = useState(() => createRoomCode());
   const [roleChoice, setRoleChoice] = useState<Role | "random">("random");
@@ -89,6 +98,19 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
   color.current = suitHex;
   const live = useRef({ paused, overlay, reducedMotion });
   live.current = { paused, overlay, reducedMotion };
+  // The round's crew artwork, mirrored into a ref so the render loop can read the
+  // newest value without being torn down and rebuilt when it lands (which would
+  // reset the camera mid-round).
+  const crewArtRef = useRef<CrewArt | null>(null);
+  crewArtRef.current = crewArt;
+  // A kill the player caused or literally watched is the only moment a live round
+  // may show the impostor's true form; the sim announces it only when the killer
+  // stood inside the player's witness radius.
+  const killFlash = useRef<{ actorId: ActorId; until: number } | null>(null);
+  // What the last painted frame was allowed to treat — empty in every live state.
+  const revealedRef = useRef<readonly ActorId[]>([]);
+  // What the round-start artwork read cost, for the diagnostics hook.
+  const roundStartMs = useRef(0);
 
   /* ---------------------------------------------------------------- loading */
 
@@ -194,6 +216,21 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
     const config: MatchConfig = { seed, tier, playerRole: role, botCount: BOTS,
       playerName: "You", friendId: friendId.toString() };
     const created = createMatch(config);
+    // The NPC crewmates are real Friends, so their own tokens are read from the
+    // chain before the first painted frame — the station never opens on a stand-in.
+    // `loadCrewArt` never rejects: a token that fails is drawn from the PLAYER's own
+    // canonical mask at a hue of its own and flagged in the diagnostics, so the
+    // station shows fewer distinct Friends rather than an invented one. If the whole
+    // call throws anyway, we still board instead of refusing to start a round.
+    const readingStarted = performance.now();
+    let art: CrewArt | null = null;
+    if (sprites) {
+      try {
+        art = await loadCrewArt({ seed, actors: created.state.actors, playerSprites: sprites, playerTokenId: friendId });
+      } catch { art = null; }
+    }
+    roundStartMs.current = Math.round(performance.now() - readingStarted);
+    setCrewArt(art);
     awarded.current.clear();
     matchRef.current = created;
     setMatch(created);
@@ -205,6 +242,9 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
 
   const leaveMatch = () => {
     matchRef.current = null;
+    killFlash.current = null;
+    revealedRef.current = [];
+    setCrewArt(null);
     setMatch(null);
     setScreen("lobby");
     setOverlay("none");
@@ -252,9 +292,23 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
         setToast(last.text);
         const cue = cueFor(last);
         if (cue) sound.current?.play(cue);
+        // A kill the player caused or watched. The sim only announces one when the
+        // killer stood inside the player's witness radius, so flashing on this event
+        // is exactly "the player already knows", and never a free tell.
+        for (const event of events) {
+          if (event.kind === "kill" && event.actorId) {
+            killFlash.current = { actorId: event.actorId, until: now + KILL_FLASH_MS };
+          }
+        }
       }
+      // Who may wear the treated impostor frame this instant. In play, in meetings
+      // and on the minimap this is empty, so the impostor is drawn from the same
+      // canonical frames, at the same tint, as every crewmate — the game is deducing
+      // who they are. It fills only once the answer is public.
+      const revealed = revealImpostorIds(state, killFlash.current, now);
+      revealedRef.current = revealed;
       painter.paint(state, {
-        playerSprites: sprites, playerColor: color.current,
+        playerSprites: sprites, playerColor: color.current, crewArt: crewArtRef.current, revealed,
         visionRadius: visionRadius(state), reducedMotion: live.current.reducedMotion,
         time: now, showMinimap: true,
       });
@@ -272,6 +326,85 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
       renderer.current = null;
     };
   }, [match, sprites]);
+
+  /**
+   * Read-only introspection for the automated checks: which token each actor's
+   * pixels came from, who the last frame was allowed to treat, and — the point of
+   * it — the actor's own blit read back out of the framebuffer, so a check can
+   * compare what is on screen with the chain's recorded frames instead of taking
+   * this game's word for it. No player action and no drawing code reads any of it.
+   */
+  useEffect(() => {
+    const host = window as unknown as { __ipImpostorProtocol?: unknown };
+    host.__ipImpostorProtocol = {
+      crewArt: () => { const art = crewArtRef.current; return art ? crewArtDiagnostics(art, friendId) : null; },
+      roundStartMs: () => roundStartMs.current,
+      revealed: () => revealedRef.current,
+      phase: () => matchRef.current?.state.phase ?? null,
+      actors: () => (matchRef.current?.state.actors ?? []).map(actor => ({
+        id: actor.id, name: actor.name, role: actor.role, color: actor.color, alive: actor.alive,
+        isPlayer: actor.isPlayer, x: Math.round(actor.pos.x), y: Math.round(actor.pos.y),
+      })),
+      blits: () => renderer.current?.diagnostics() ?? [],
+      /**
+       * One actor's last blit, measured off the canvas itself: the tint of every
+       * cell that holds a mask pixel, and how much of the drawn halo actually
+       * carries the halo colour. The silhouette comes from the framebuffer, not
+       * from the blit record's arithmetic.
+       */
+      pixels: (actorId: string) => {
+        const node = canvas.current;
+        const entry = renderer.current?.diagnostics().find(blit => blit.id === actorId);
+        if (!node || !entry) return null;
+        const context = node.getContext("2d");
+        if (!context) return null;
+        const cssWidth = node.getBoundingClientRect().width;
+        const scale = cssWidth > 0 ? node.width / cssWidth : 1;
+        const left = Math.round(entry.left * scale), top = Math.round(entry.top * scale);
+        const width = Math.round(80 * scale), height = Math.round(80 * scale);
+        const data = context.getImageData(left, top, width, height).data;
+        const sample = (x: number, y: number) => {
+          const px = Math.min(width - 1, Math.max(0, Math.round((x + 0.5) * scale)));
+          const py = Math.min(height - 1, Math.max(0, Math.round((y + 0.5) * scale)));
+          const index = (py * width + px) * 4;
+          return [data[index], data[index + 1], data[index + 2], data[index + 3]];
+        };
+        const rgb = (hex: string) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+        const tint = rgb(entry.tint), halo = rgb(entry.haloColor);
+        const is = (pixel: readonly number[], colour: readonly number[]) => pixel[3] > 240
+          && Math.abs(pixel[0] - colour[0]) + Math.abs(pixel[1] - colour[1]) + Math.abs(pixel[2] - colour[2]) <= 24;
+        const rows = entry.rows.split("\n");
+        const solid = (px: number, py: number) => px >= 0 && px < 16 && py >= 0 && py < 16 && rows[py]?.[px] === "#";
+        let cells = "", solidCells = 0, tintCells = 0, orphanCells = 0, orphanHits = 0;
+        for (let py = 0; py < 16; py++) {
+          for (let px = 0; px < 16; px++) {
+            if (solid(px, py)) {
+              solidCells++;
+              const hit = is(sample(px * 5 + 2, py * 5 + 2), tint);
+              if (hit) tintCells++;
+              cells += hit ? "T" : "?";
+              continue;
+            }
+            // A ring cell with exactly one solid neighbour is covered by that
+            // neighbour's halo box and nothing else, so it is the one place a kept
+            // or dropped halo box can be told apart from the canvas.
+            let neighbours = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && solid(px + dx, py + dy)) neighbours++;
+            }
+            if (neighbours === 1) { orphanCells++; if (is(sample(px * 5 + 2, py * 5 + 2), halo)) orphanHits++; }
+            cells += sample(px * 5 + 2, py * 5 + 2)[3] > 8 ? "·" : " ";
+          }
+        }
+        return { id: entry.id, role: entry.role, isPlayer: entry.isPlayer, reversedRole: entry.reversedRole,
+          tokenId: entry.tokenId, source: entry.source, tint: entry.tint, haloColor: entry.haloColor,
+          rows: entry.rows, cells, solidCells, tintCells, orphanCells, orphanHits,
+          maskPixels: entry.maskPixels, haloPixels: entry.haloPixels, haloIntact: entry.haloIntact,
+          left: entry.left, top: entry.top, scale };
+      },
+    };
+    return () => { delete host.__ipImpostorProtocol; };
+  }, [friendId]);
 
   // The HUD re-renders a few times a second; the canvas is driven by the loop.
   useEffect(() => {
@@ -447,6 +580,7 @@ export default function ImpostorProtocol({ friendId, client, paused }: GameCompo
 
         {state.phase === "over" && state.summary && <Debrief
           summary={state.summary} state={state}
+          crewArt={crewArt} playerSprites={sprites} playerColor={color.current}
           caches={caches} onOpenCache={openCache}
           inventory={inventory} onRedeem={redeem}
           busy={busy} error={error} message={message}

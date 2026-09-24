@@ -15,16 +15,21 @@
  *    station that was active while `tasksDone` ticked up, and `task-done` events
  *    whose text names the station. The aggregate bars stay authoritative.
  */
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { formatGameAmount } from "@rarefriends/friendsdk/ui";
 import { GameMenu } from "@rarefriends/friendsdk/frame";
+import type { GenerationSprites } from "@rarefriends/friendsdk/sprites";
+import {
+  IMPOSTOR_HALO, IMPOSTOR_TINT, canonicalRows, haloKept, maskFallbackEntry,
+  revealImpostorIds, rowsChecksum, type CrewArt,
+} from "./crew-art";
 import type {
   BriefingProps, CacheOffer, DebriefProps, EjectionProps, HudProps, InventoryRow,
   LobbyProps, LockerProps, MeetingProps, RosterEntry, SettingsProps, TaskListProps,
 } from "./screens";
 import {
   CREW_COLORS, ROOM_CODE_ALPHABET, TASK_LABELS,
-  type ActorId, type CrewColorId, type Role, type SabotageKind, type Tier, type VoteTarget,
+  type ActorId, type CrewColorId, type MatchState, type Role, type SabotageKind, type Tier, type VoteTarget,
 } from "./types";
 import "./ui.css";
 
@@ -310,9 +315,9 @@ export function Lobby({
       </header>
 
       <div className="ip-lobby-body">
-        <section className="ip-card" aria-labelledby="ip-tier-heading">
+        <section className="ip-card ip-card--tier" aria-labelledby="ip-tier-heading">
           <h2 className="ip-h" id="ip-tier-heading">Tournament tier</h2>
-          <div className="ip-tiers" role="radiogroup" aria-label="Tournament tier">
+          <div className="ip-tiers ip-tiers--segmented" role="radiogroup" aria-label="Tournament tier">
             {TIER_ROWS.map(row => (
               <label key={row.id} className="ip-tier" data-selected={row.id === tier || undefined}>
                 <input type="radio" name="ip-tier" value={row.id} checked={row.id === tier} disabled={busy}
@@ -439,18 +444,21 @@ export function Lobby({
 export function Briefing({ state, roster, impostorCount, onBegin, reducedMotion, onReducedMotion }: BriefingProps): ReactElement {
   const impostor = state.config.playerRole === "impostor";
   const count = `${impostorCount} impostor${impostorCount === 1 ? "" : "s"}`;
-  const plan: readonly Readonly<{ text: string; danger?: boolean }>[] = impostor
+  /* Each plan line carries a short variant: a phone frame is ~390px wide and
+     258px tall in the worst case the harness can measure, and a wrapped two-line
+     plan there costs the roster its rows. The short line says the same thing. */
+  const plan: readonly Readonly<{ text: string; short: string; danger?: boolean }>[] = impostor
     ? [
-        { text: "Break the crew: eliminations and sabotage are how you win.", danger: true },
-        { text: "Vent to move unseen — the crew cannot follow you through the ducts.", danger: true },
-        { text: "Sabotage to pull the crew apart while you are somewhere else.", danger: true },
-        { text: `Survive the votes. There are ${count} aboard, and you are one of them.`, danger: true },
+        { text: "Break the crew: eliminations and sabotage are how you win.", short: "Break the crew", danger: true },
+        { text: "Vent to move unseen — the crew cannot follow you through the ducts.", short: "Vent to move unseen", danger: true },
+        { text: "Sabotage to pull the crew apart while you are somewhere else.", short: "Sabotage the station", danger: true },
+        { text: `Survive the votes. There are ${count} aboard, and you are one of them.`, short: "Survive the votes", danger: true },
       ]
     : [
-        { text: `Finish your ${state.tasksTotal} station tasks — every one moves the crew bar.` },
-        { text: "Find the bodies and report them before the impostors thin the crew." },
-        { text: "Call an emergency meeting at the button to force a vote." },
-        { text: `Vote carefully: there ${impostorCount === 1 ? "is" : "are"} ${count} among you, and ejecting crew helps them.` },
+        { text: `Finish your ${state.tasksTotal} station tasks — every one moves the crew bar.`, short: `Finish your ${state.tasksTotal} tasks` },
+        { text: "Find the bodies and report them before the impostors thin the crew.", short: "Report the bodies" },
+        { text: "Call an emergency meeting at the button to force a vote.", short: "Call a meeting" },
+        { text: `Vote carefully: there ${impostorCount === 1 ? "is" : "are"} ${count} among you, and ejecting crew helps them.`, short: "Vote carefully" },
       ];
 
   return (
@@ -465,9 +473,13 @@ export function Briefing({ state, roster, impostorCount, onBegin, reducedMotion,
         </div>
         <div className="ip-head-right">
           <span className={impostor ? "ip-chip ip-chip--danger" : "ip-chip ip-chip--accent"}>
-            {impostor ? "You are the Impostor" : "You are Crew"}
+            <span className="ip-wide-only">{impostor ? "You are the Impostor" : "You are Crew"}</span>
+            <span className="ip-narrow-only">{impostor ? "Impostor" : "Crew"}</span>
           </span>
-          <span className="ip-chip">{state.tasksTotal} tasks assigned</span>
+          <span className="ip-chip">
+            <span className="ip-wide-only">{state.tasksTotal} tasks assigned</span>
+            <span className="ip-narrow-only">{state.tasksTotal} tasks</span>
+          </span>
         </div>
       </header>
 
@@ -486,16 +498,21 @@ export function Briefing({ state, roster, impostorCount, onBegin, reducedMotion,
           </p>
         </section>
 
-        <section className="ip-card" aria-labelledby="ip-brief-roster">
-          <h2 className="ip-h" id="ip-brief-roster">Crew roster</h2>
+        <section className="ip-card ip-card--roster" aria-labelledby="ip-brief-roster">
+          <h2 className="ip-h" id="ip-brief-roster">
+            Crew roster<span className="ip-narrow-only ip-roster-tally"> · {roster.length}</span>
+          </h2>
           <RosterList roster={roster} hint="No crew is aboard yet." />
         </section>
 
-        <section className="ip-card" aria-labelledby="ip-brief-plan">
+        <section className="ip-card ip-card--plan" aria-labelledby="ip-brief-plan">
           <h2 className="ip-h" id="ip-brief-plan">Mission plan</h2>
           <ul className="ip-plan">
             {plan.map(item => (
-              <li key={item.text} data-danger={item.danger || undefined}>{item.text}</li>
+              <li key={item.text} data-danger={item.danger || undefined}>
+                <span className="ip-wide-only">{item.text}</span>
+                <span className="ip-narrow-only">{item.short}</span>
+              </li>
             ))}
           </ul>
           <p className="ip-note">
@@ -903,12 +920,192 @@ export function Ejection({ ejection, onContinue, remaining }: EjectionProps): Re
 }
 
 /* ---------------------------------------------------------------- *
+ * Reveal strip — the post-round home of the impostor artwork
+ * ---------------------------------------------------------------- */
+
+/**
+ * The strip's integer scale: 16 canonical pixels at 3x = 48, drawn 1:1 into a
+ * 48px CSS box, so one mask pixel is exactly 3x3 screen pixels and the halo keeps
+ * the station's geometry (`blitMask` draws a 3x3-cell halo box behind each mask
+ * pixel). Nothing here is a fraction of a pixel: a mask that is not an integer
+ * multiple of the canonical grid stops reading as the same Friend.
+ */
+const REVEAL_SCALE = 3;
+const REVEAL_PX = 16 * REVEAL_SCALE;
+
+/**
+ * Below this frame height the debrief switches to `data-compact`: a phone-sized
+ * frame (388x258) is 258px tall and cannot hold a pinned header, a seven-entry
+ * strip and a pinned footer at once, and the pinned rows would leave the
+ * scrolling body a zero-height sliver — which would put the strip out of reach
+ * exactly where it is most wanted. In compact mode the whole screen scrolls as
+ * one column and the strip's copy shortens. At and above it the debrief keeps
+ * the three-row grid it is laid out with: header pinned, body scrolling, exit
+ * controls pinned.
+ */
+const COMPACT_HEIGHT = 430;
+
+/** The colour a clean entry's halo is drawn in — the same white the station uses. */
+const CLEAN_HALO = "#ffffff";
+
+/**
+ * One row of the strip: an actor, and the canonical frame it must be drawn from.
+ * Built once per round from the artwork the station itself rendered from, so the
+ * strip is the station's pixels at a smaller integer scale — never a re-drawing.
+ */
+type RevealEntry = Readonly<{
+  id: ActorId; name: string; role: Role; isPlayer: boolean; alive: boolean;
+  /** The 16 canonical rows this entry draws (frame 0: idle, facing down). */
+  rows: readonly string[];
+  /** FNV-1a of those rows, so a check can name the frame without the pixels. */
+  digest: string;
+  tint: string; halo: string; haloIntact: boolean; treated: boolean;
+  tokenId: string;
+  /** `chain`, `player-mask-fallback`, or `unavailable` — never a silent guess. */
+  source: string;
+}>;
+
+/**
+ * The actors the strip shows, in an order that is the same for every round and
+ * every role (the player, then the crew in roster order) — an ordering cannot be
+ * a tell, so it must not depend on which actor holds which role.
+ *
+ * Pixels come from exactly what the station drew: NPCs from the round's crew
+ * artwork, the player from the clips the SDK read for its Friend. A token whose
+ * read failed falls back to the player's own mask at a hue of its own, and the
+ * strip uses the renderer's own `maskFallbackEntry` for that — the same pixels and
+ * the same `source` string, so the fallback stays visible to a check instead of
+ * being dressed up as a chain read.
+ *
+ * WHO wears the treated frame comes from `revealImpostorIds()`, the same rule the
+ * renderer obeys. In this component the phase is always `over`, so that rule names
+ * every impostor — the player included: play the round as the impostor and the
+ * strip shows the player wearing the treated frame too.
+ */
+function revealEntries(
+  state: MatchState, crewArt: CrewArt | null, playerSprites: GenerationSprites | null, playerColor: string,
+): readonly RevealEntry[] {
+  const revealed = revealImpostorIds(state, null, 0);
+  const ordered = state.actors.slice().sort((a, b) => Number(b.isPlayer) - Number(a.isPlayer));
+  const entries: RevealEntry[] = [];
+  for (const actor of ordered) {
+    const own = actor.isPlayer ? null : crewArt?.byActor[actor.id] ?? null;
+    const fallback = !actor.isPlayer && !own && playerSprites
+      ? maskFallbackEntry(actor.id, actor.color, playerSprites) : null;
+    const sprites = actor.isPlayer ? playerSprites : own?.sprites ?? fallback?.sprites ?? null;
+    const rows = sprites ? canonicalRows(sprites.frames[0]) : [];
+    const treated = actor.role === "impostor" && revealed.includes(actor.id);
+    entries.push(Object.freeze({
+      id: actor.id, name: actor.name || actor.id, role: actor.role, isPlayer: actor.isPlayer, alive: actor.alive,
+      rows, digest: rowsChecksum(rows),
+      tint: treated ? IMPOSTOR_TINT : actor.isPlayer ? playerColor || CREW_COLORS.white : own?.tint ?? fallback?.tint ?? CREW_COLORS.white,
+      halo: treated ? IMPOSTOR_HALO : CLEAN_HALO, haloIntact: !treated, treated,
+      tokenId: (actor.isPlayer ? playerSprites : own?.sprites ?? fallback?.sprites)?.tokenId.toString() ?? "",
+      source: actor.isPlayer ? (playerSprites ? "chain" : "unavailable") : own?.source ?? fallback?.source ?? "unavailable",
+    }));
+  }
+  return entries;
+}
+
+/**
+ * One actor's canonical mask, drawn with the station's own blit rules at the
+ * strip's integer scale: halo boxes first (every third one dropped when the halo
+ * is damaged), then the mask over them. `haloKept()` is the same function the
+ * station's `blitMask` calls, so the drawn halo and the described halo cannot
+ * drift apart — and `data-mask-cells` / `data-halo-cells` are counted from the
+ * pixels that were actually painted.
+ */
+function RevealMask({ entry }: { entry: RevealEntry }): ReactElement {
+  const node = useRef<HTMLCanvasElement>(null);
+  // The effect re-runs on the drawing inputs, not on the render: the debrief
+  // re-renders while it is on screen and a 48px mask must not repaint each time.
+  const signature = `${entry.tint}|${entry.halo}|${entry.haloIntact}|${entry.rows.join("/")}`;
+  useEffect(() => {
+    const canvas = node.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) return;
+    context.clearRect(0, 0, REVEAL_PX, REVEAL_PX);
+    let maskCells = 0, haloCells = 0;
+    context.fillStyle = entry.halo;
+    for (let py = 0; py < 16; py++) {
+      const row = entry.rows[py] ?? "";
+      for (let px = 0; px < 16; px++) {
+        if (row.charCodeAt(px) !== 35) continue;
+        maskCells++;
+        if (!haloKept(px, py, entry.haloIntact)) continue;
+        haloCells++;
+        context.fillRect((px - 1) * REVEAL_SCALE, (py - 1) * REVEAL_SCALE, 3 * REVEAL_SCALE, 3 * REVEAL_SCALE);
+      }
+    }
+    context.fillStyle = entry.tint;
+    for (let py = 0; py < 16; py++) {
+      const row = entry.rows[py] ?? "";
+      for (let px = 0; px < 16; px++) if (row.charCodeAt(px) === 35) {
+        context.fillRect(px * REVEAL_SCALE, py * REVEAL_SCALE, REVEAL_SCALE, REVEAL_SCALE);
+      }
+    }
+    canvas.dataset.drawn = entry.rows.length ? "yes" : "empty";
+    canvas.dataset.maskCells = String(maskCells);
+    canvas.dataset.haloCells = String(haloCells);
+  }, [signature]);
+  return (
+    <canvas className="ip-rs-mask" ref={node} width={REVEAL_PX} height={REVEAL_PX}
+      aria-hidden="true" data-drawn="no" />
+  );
+}
+
+/**
+ * The strip itself: one entry per actor — the player and every crewmate — each
+ * drawn from its canonical frames, with the impostors the round named wearing the
+ * treated frame. It is rendered by `Debrief` and by nothing else, so it cannot
+ * appear on any screen a live round can reach; `reveal-strip-check.mjs` asserts
+ * that on live frames, not from this comment.
+ */
+export function RevealStrip({ entries, compact = false }: {
+  entries: readonly RevealEntry[]; compact?: boolean;
+}): ReactElement {
+  const impostors = entries.filter(entry => entry.treated);
+  const names = impostors.map(entry => (entry.isPlayer ? `${entry.name} (you)` : entry.name)).join(", ");
+  return (
+    <section className="ip-card ip-card--wide ip-rs-card" data-reveal-strip="true" aria-labelledby="ip-rs-heading">
+      <h2 className="ip-h" id="ip-rs-heading">Who was who</h2>
+      <p className="ip-note">
+        {compact
+          ? <>Drawn at {REVEAL_SCALE}x from each actor's own canonical frame. <b>{impostors.length > 0 ? names : "Nobody"}</b>{" "}
+            wore the impostor frame.</>
+          : <>Every actor in the round, each drawn at {REVEAL_SCALE}x from the same canonical Friend frame it was
+            rendered from on the station. {impostors.length > 0
+              ? <><b>{impostors.length}</b> of the {entries.length} wear the impostor frame: <b>{names}</b>.</>
+              : <>No actor wore the impostor frame (nobody held the role this round).</>}</>}
+      </p>
+      <ul className="ip-rs-list" data-actor-count={entries.length}>
+        {entries.map(entry => (
+          <li key={entry.id} className="ip-rs-item"
+            data-actor={entry.id} data-name={entry.name} data-role={entry.role}
+            data-treated={entry.treated} data-is-player={entry.isPlayer} data-alive={entry.alive}
+            data-token-id={entry.tokenId} data-source={entry.source} data-tint={entry.tint}
+            data-halo={entry.halo} data-halo-intact={entry.haloIntact} data-rows-digest={entry.digest}
+            data-rows={entry.rows.join("\n")}
+            aria-label={`${entry.name}: ${entry.isPlayer ? "you, " : ""}${entry.treated ? "impostor frame" : "crew frame"}`}>
+            <RevealMask entry={entry} />
+            <b className="ip-rs-name">{entry.name}</b>
+            <span className="ip-rs-tag">
+              {entry.isPlayer ? (entry.treated ? "You · impostor" : "You · crew") : entry.treated ? "Impostor" : "Crew"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- *
  * Debrief (cache opening)
  * ---------------------------------------------------------------- */
 
 export function Debrief({
-  summary, state, caches, onOpenCache, inventory, onRedeem, busy, error, message,
-  finishNote, onPlayAgain, onLobby, simulated,
+  summary, state, crewArt, playerSprites, playerColor, caches, onOpenCache, inventory, onRedeem,
+  busy, error, message, finishNote, onPlayAgain, onLobby, simulated,
 }: DebriefProps): ReactElement {
   const [kept, setKept] = useState<readonly string[]>([]);
   const role = summary.playerRole === "impostor" ? "the impostor" : "crew";
@@ -916,9 +1113,36 @@ export function Debrief({
   const held = inventory.reduce((total, row) => total + row.reward * row.count, 0n);
   const opened = caches.filter(cache => cache.outcomeId !== null).length;
   const keep = (id: string) => setKept(previous => (previous.includes(id) ? previous : [...previous, id]));
+  // Roles and colours never change once the round is dealt, so the strip's entries
+  // are built once — decoding seven canonical masks per debrief re-render would be
+  // work for nothing. The signature covers everything the entries depend on.
+  const dealt = state.actors.map(actor => `${actor.id}:${actor.role}:${actor.isPlayer ? 1 : 0}`).join(",");
+  const revealStrip = useMemo(
+    () => revealEntries(state, crewArt, playerSprites, playerColor),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `state` is mutated in place by the sim; `dealt` is what the entries actually read.
+    [dealt, crewArt, playerSprites, playerColor],
+  );
+  // The debrief measures its own box: the three-row grid it is laid out with pins
+  // the header and the exit controls and scrolls the middle, which needs a middle
+  // to scroll — on a frame shorter than COMPACT_HEIGHT the two pinned rows alone
+  // are taller than the screen, so there the whole screen scrolls as one column
+  // instead. Deterministic from the frame's own size — no preference, no guess.
+  const shell = useRef<HTMLElement>(null);
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const node = shell.current;
+    if (!node) return;
+    const measure = () => setCompact(node.clientHeight > 0 && node.clientHeight < COMPACT_HEIGHT);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <section className="ip ip-debrief" data-win={summary.playerWon} aria-label="Match debrief">
+    <section className="ip ip-debrief" ref={shell} data-win={summary.playerWon} data-compact={compact}
+      aria-label="Match debrief">
       <header className="ip-debrief-head">
         <div className="ip-outcome">
           <p className="ip-eyebrow">
@@ -945,6 +1169,8 @@ export function Debrief({
       </header>
 
       <div className="ip-debrief-body">
+        <RevealStrip entries={revealStrip} compact={compact} />
+
         <section className="ip-card" aria-labelledby="ip-debrief-caches">
           <h2 className="ip-h" id="ip-debrief-caches">
             Reward caches{caches.length > 0 ? ` · ${opened}/${caches.length} opened` : ""}

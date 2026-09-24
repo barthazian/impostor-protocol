@@ -14,7 +14,7 @@ weighted prize roll.
 
 ## Playable preview
 
-<!-- Preview URL, served from docs/ by GitHub Pages. -->
+<!-- Preview URL: fill in once the static build is published. -->
 - **URL:** https://barthazian.github.io/impostor-protocol/
 - **Open it** in a browser that has (or can connect) a wallet on **Robinhood mainnet
   (chain 4663)** holding a hardwired Generations NFT, generation ≥ 1 — the SDK's

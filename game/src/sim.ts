@@ -52,8 +52,20 @@ const PLAYER_KILL_COOLDOWN = 25;
 const BOT_KILL_COOLDOWN = 28;
 /** A bot impostor refuses to kill while any third actor is this close. */
 const BOT_KILL_SAFE_RADIUS = 220;
-/** How far an actor can be from a kill and still register it. */
-const WITNESS_RADIUS = 220;
+/**
+ * How far an actor can SEE a kill happen — the sight radius the renderer draws
+ * the fog with (`visionRadius()` below) and the radius a kill is registered
+ * from.
+ *
+ * It used to be 220, the very same number as BOT_KILL_SAFE_RADIUS: a bot only
+ * kills while every third actor is further than 220 away, so a kill inside the
+ * player's witness radius was geometrically impossible and the "kill" event
+ * never fired in a real round. In a real round the impostor kills wherever it
+ * can and any bystander close enough SEES it — the sight radius is not a rule
+ * the bots obey. 400 is far enough out that an ordinary bot kill lands inside
+ * it. BOT_KILL_SAFE_RADIUS is untouched: how lethal the bots are is unchanged.
+ */
+const WITNESS_RADIUS = 400;
 /** Actors loitering this close to a body when it is found look suspicious. */
 const BODY_SUSPICION_RADIUS = 260;
 const INTERACT_RANGE = 70;
@@ -150,9 +162,15 @@ function shuffle<T>(rng: Rng, items: readonly T[]): T[] {
  *  Read-only helpers the UI calls                                     *
  * ------------------------------------------------------------------ */
 
-/** Crewmates see 210 units; a lights sabotage cuts it to 90. */
+/**
+ * Crewmates see WITNESS_RADIUS units — deliberately the SAME number a kill is
+ * witnessed from, because the renderer paints the fog with this radius: one
+ * number, so "the player saw it" and "the player could see it" cannot drift
+ * apart. A lights sabotage cuts it to 90 (and therefore in a blackout a kill
+ * beyond 90 is neither visible nor registered — see `performKill`).
+ */
 export function visionRadius(state: MatchState): number {
-  return state.sabotage === "lights" ? 90 : 210;
+  return state.sabotage === "lights" ? 90 : WITNESS_RADIUS;
 }
 
 /** Human label for a sabotage kind, used by the HUD and by event text. */
@@ -859,7 +877,13 @@ export function createMatch(config: MatchConfig): Match {
       }
     }
     const player = playerActor();
-    if (player !== victim && player.alive && within(player.pos, killer.pos, WITNESS_RADIUS)) {
+    // The player registers a kill from exactly as far as the player can SEE:
+    // the fog radius in force, not the full sight radius. In a blackout the fog
+    // is 90, so a kill the player could not have seen is not announced either —
+    // the "kill" event drives the toast and the one frame a live round may show
+    // the impostor's true form, so announcing an unseen kill would be a free
+    // tell rather than a witness.
+    if (player !== victim && player.alive && within(player.pos, killer.pos, visionRadius(state))) {
       killer.witnessed = true;
       pushEvent("kill", `${killer.name} eliminated ${victim.name}`, killer.id);
     }
