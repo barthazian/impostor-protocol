@@ -20,6 +20,11 @@ weighted prize roll.
   (chain 4663)** holding a hardwired Generations NFT, generation ≥ 1 — the SDK's
   ownership gate runs before play and this build keeps it intact.
 - **Free path:** choose the **Practice** tier (0 RF) to play a full round.
+- **Which Friends can be selected:** only **hardwired** Friends — generation ≥ 1.
+  The SDK's own discovery (`owned-friends.ts`) drops generation-0 mints from the
+  picker and reports them as a hidden count, and this game does no filtering of its
+  own. A wallet holding a mix shows only its gen-1 Friends; that is the platform's
+  rule.
 - **Wallet / network required:** a browser wallet on **Robinhood mainnet (chain
   4663)** holding a hardwired Rare Friends Generations NFT, **generation ≥ 1**.
   The SDK's ownership gate runs before play and this build keeps it intact.

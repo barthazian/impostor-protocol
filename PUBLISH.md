@@ -39,8 +39,8 @@ renders with no page errors.
 
 The submission is a pull request against `spokesz/rarefriends-vibeathon` that
 adds `submissions/impostor-protocol/README.md`. `SUBMISSION.md` is already written
-in that repository's format — it just needs the two `FILL` spots (builder name and
-preview URL).
+in that repository's format, with the builder handle and preview URL already filled
+in. The branch `submission/impostor-protocol` is pushed to the fork.
 
 ```sh
 # fork spokesz/rarefriends-vibeathon on GitHub, then:
@@ -61,4 +61,5 @@ requirements, controls and rules, RF costs with outcome probabilities and
 consumable rules, checks with real results, known limitations and asset credits.
 
 **Before submitting:** play a round yourself with your own wallet and Friend, on
-both desktop and phone, and replace the two `FILL` markers.
+both desktop and phone. Then open the PR with
+`gh pr create --repo spokesz/rarefriends-vibeathon --head barthazian:submission/impostor-protocol`.
