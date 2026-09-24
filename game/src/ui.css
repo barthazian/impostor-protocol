@@ -21,6 +21,11 @@
   --ip-info: #38fedc;
   --ip-text: #e8edf7;
   --ip-muted: #8b9bb4;
+  /* The SDK's host toolbar (wallet / "Local preview" / menu) is painted over the
+     bottom strip of the game area and swallows clicks there, so every interactive
+     footer has to clear it. Measured: 36px tall toolbar, 874x36 @15,589 on desktop
+     and 340x36 @7,217 in a 388x258 phone frame. */
+  --ip-safe-bottom: 54px;
   position: relative;
   isolation: isolate;
   display: block;
@@ -501,7 +506,7 @@
 
 .ip.ip-tasklist { position: absolute; inset: 0; z-index: 12; background: transparent; }
 
-.ip-overlay { position: absolute; inset: 0; z-index: 12; display: grid; place-items: center; padding: clamp(8px, 2.2cqw, 22px); padding-bottom: clamp(30px, 6cqw, 62px); }
+.ip-overlay { position: absolute; inset: 0; z-index: 12; display: grid; place-items: center; padding: clamp(8px, 2.2cqw, 22px); padding-bottom: calc(clamp(8px, 2.2cqw, 22px) + var(--ip-safe-bottom)); }
 .ip-overlay::before { content: ""; position: absolute; inset: 0; background: #05070ac9; }
 .ip-overlay[data-dismissable="true"] { cursor: pointer; }
 
@@ -685,6 +690,10 @@
   display: grid;
   place-items: center;
   padding: clamp(8px, 2cqw, 20px);
+  /* Centred inside a box that excludes the host toolbar strip, otherwise the
+     footer Close lands underneath it (measured y=213 in a 258px phone frame) and
+     the click is swallowed by the host layer. */
+  padding-bottom: calc(clamp(8px, 2cqw, 20px) + var(--ip-safe-bottom));
   background: #05070ac9;
   overflow: hidden;
 }
@@ -695,6 +704,11 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  /* Definite height. Without it the menu's `max-height: 100%` resolves against an
+     auto-height parent and is ignored, so a long window (the Locker) grows taller
+     than the frame and gets centred — pushing its × above and its Close below the
+     viewport, where neither can be clicked. */
+  height: 100%;
   max-height: 100%;
   min-height: 0;
   padding: 0;
