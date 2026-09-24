@@ -1,0 +1,26 @@
+SPIKE A — single-player path before/after the per-actor input change
+seed=20260924 frames=3600 dt=0.016666666666666666 inputs=seeded scripted walks
+
+botCount=5 (6 actors)  PASS
+  before(2-arg)              final = c41cf9646a96ba620bf72cdaeec999909331be6f6d8bbc72be5317eadc889b29
+  after (2-arg)              final = c41cf9646a96ba620bf72cdaeec999909331be6f6d8bbc72be5317eadc889b29
+  after (3-arg undefined)    final = c41cf9646a96ba620bf72cdaeec999909331be6f6d8bbc72be5317eadc889b29
+  after (3-arg {})           final = c41cf9646a96ba620bf72cdaeec999909331be6f6d8bbc72be5317eadc889b29
+  after (supplied map)       final = 269c8dcc56a9f47f3f534b8ee60a2e998483218ae899042208ea3d6949fe1fc6
+  per-frame identical before/after   : 3600/3600 frames
+  per-frame identical with undefined : 3600/3600 frames
+  per-frame identical with empty map : 3600/3600 frames
+  supplied map diverges at frame     : 0 (the new path is live, not a no-op)
+
+botCount=6 (7 actors)  PASS
+  before(2-arg)              final = 41c5798135410ab7e7dee3eae9b949883794d7fc4aa40934e50c7e4fe8d698fb
+  after (2-arg)              final = 41c5798135410ab7e7dee3eae9b949883794d7fc4aa40934e50c7e4fe8d698fb
+  after (3-arg undefined)    final = 41c5798135410ab7e7dee3eae9b949883794d7fc4aa40934e50c7e4fe8d698fb
+  after (3-arg {})           final = 41c5798135410ab7e7dee3eae9b949883794d7fc4aa40934e50c7e4fe8d698fb
+  after (supplied map)       final = 7b1bc1e0ba9a681869113c6da4421a79c3d42b39e779fe1e83ebcdae6d647ee2
+  per-frame identical before/after   : 3600/3600 frames
+  per-frame identical with undefined : 3600/3600 frames
+  per-frame identical with empty map : 3600/3600 frames
+  supplied map diverges at frame     : 0 (the new path is live, not a no-op)
+
+SPIKE A RESULT: PASS — no-map call sites are byte-identical

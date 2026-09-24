@@ -1,0 +1,151 @@
+{
+  "roomId": "ROOM-B",
+  "seedMatch": "dfaad7475383b484273dd4fe74c521b082631524ec1425e7c482152824e445b5",
+  "seedDrop": "5f98fa7c025b4ed321964b2b7737e70d5a63f29f7b799b36af66a210e5957ae2",
+  "matchSeed": 992865184,
+  "commitMatch": "08a1835aa18d6e296eecbe3a68ddcc4263b4c000fa0712ec09f46369c4c10c90",
+  "commitDrop": "3304a2c66a7975e31a86dbb716e515b67292509e5d2113b0ab05819d52e0939f",
+  "impostorIds": [
+    "bot-1",
+    "bot-3"
+  ],
+  "roster": [
+    {
+      "slot": 0,
+      "actorId": "player",
+      "name": "Slot0",
+      "color": "white"
+    },
+    {
+      "slot": 1,
+      "actorId": "bot-0",
+      "name": "Circuit",
+      "color": "blue"
+    },
+    {
+      "slot": 2,
+      "actorId": "bot-1",
+      "name": "Rusty",
+      "color": "pink"
+    },
+    {
+      "slot": 3,
+      "actorId": "bot-2",
+      "name": "Pixel",
+      "color": "black"
+    },
+    {
+      "slot": 4,
+      "actorId": "bot-3",
+      "name": "Solder",
+      "color": "cyan"
+    },
+    {
+      "slot": 5,
+      "actorId": "bot-4",
+      "name": "Glitch",
+      "color": "green"
+    },
+    {
+      "slot": 6,
+      "actorId": "bot-5",
+      "name": "Widget",
+      "color": "red"
+    }
+  ],
+  "stateHash": "5d0fe195dee03e00d4eb0410bf7873c787a5d7963becfa9bfd00bf5248e3ecfc",
+  "dropRoot": "9636a82298603fe9e4fa06ecfcb0f41fa359911ff74cd11fd59c7b9d664f9e52",
+  "drops": [
+    {
+      "slot": 0,
+      "passIndex": 0,
+      "drip": "spare-parts",
+      "label": "Spare Parts",
+      "rfCents": 25
+    },
+    {
+      "slot": 1,
+      "passIndex": 0,
+      "drip": "spare-parts",
+      "label": "Spare Parts",
+      "rfCents": 25
+    },
+    {
+      "slot": 2,
+      "passIndex": 0,
+      "drip": "circuit-board",
+      "label": "Circuit Board",
+      "rfCents": 50
+    },
+    {
+      "slot": 3,
+      "passIndex": 0,
+      "drip": "circuit-board",
+      "label": "Circuit Board",
+      "rfCents": 50
+    },
+    {
+      "slot": 4,
+      "passIndex": 0,
+      "drip": "scrap-metal",
+      "label": "Scrap Metal",
+      "rfCents": 0
+    },
+    {
+      "slot": 5,
+      "passIndex": 0,
+      "drip": "power-cell",
+      "label": "Power Cell",
+      "rfCents": 100
+    },
+    {
+      "slot": 6,
+      "passIndex": 0,
+      "drip": "circuit-board",
+      "label": "Circuit Board",
+      "rfCents": 50
+    }
+  ],
+  "amounts": [
+    {
+      "wallet": "0x2355300aa277a9c7d626bb0542a0bfc7439cda70",
+      "slot": 0,
+      "amountCents": 25
+    },
+    {
+      "wallet": "0x7b2959854a5681ad713aa6db0a7f969cd5c2cdd2",
+      "slot": 1,
+      "amountCents": 25
+    },
+    {
+      "wallet": "0xc2c3820ae4f9553bcf476651f8e7fa85e37b9444",
+      "slot": 2,
+      "amountCents": 50
+    },
+    {
+      "wallet": "0xc71c7ea33df29df9b8eb664635974929816cba71",
+      "slot": 3,
+      "amountCents": 50
+    },
+    {
+      "wallet": "0x3b2d8e0cfd66e0eb33eda4cc2d59cc4870d86b2d",
+      "slot": 4,
+      "amountCents": 0
+    },
+    {
+      "wallet": "0x838b9d4ae7f1cb1a8c8e32446f78349a0bd12149",
+      "slot": 5,
+      "amountCents": 100
+    },
+    {
+      "wallet": "0xfe42b9fee3f5a30fc4438aa5c0be182270a08042",
+      "slot": 6,
+      "amountCents": 50
+    }
+  ],
+  "backfilledSlots": [
+    4
+  ],
+  "roomCostCents": 300,
+  "passesInCents": 700
+}

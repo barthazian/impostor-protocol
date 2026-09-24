@@ -1,0 +1,143 @@
+{
+  "replayOrder": "reverse",
+  "roomId": "ROOM-A",
+  "problems": [],
+  "frames": 10800,
+  "commitmentsChecked": 7,
+  "commitmentsOk": true,
+  "closeRevealOk": true,
+  "stateHash": "97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a",
+  "publishedStateHash": "97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a",
+  "stateHashAgrees": true,
+  "finalPhase": "play",
+  "simTime": 180.00000000003539,
+  "drops": [
+    {
+      "slot": 6,
+      "passIndex": 0,
+      "recomputed": "circuit-board",
+      "published": "circuit-board",
+      "recomputedCents": 50,
+      "publishedCents": 50,
+      "agrees": true
+    },
+    {
+      "slot": 5,
+      "passIndex": 0,
+      "recomputed": "power-cell",
+      "published": "power-cell",
+      "recomputedCents": 100,
+      "publishedCents": 100,
+      "agrees": true
+    },
+    {
+      "slot": 4,
+      "passIndex": 0,
+      "recomputed": "scrap-metal",
+      "published": "scrap-metal",
+      "recomputedCents": 0,
+      "publishedCents": 0,
+      "agrees": true
+    },
+    {
+      "slot": 3,
+      "passIndex": 0,
+      "recomputed": "circuit-board",
+      "published": "circuit-board",
+      "recomputedCents": 50,
+      "publishedCents": 50,
+      "agrees": true
+    },
+    {
+      "slot": 2,
+      "passIndex": 0,
+      "recomputed": "circuit-board",
+      "published": "circuit-board",
+      "recomputedCents": 50,
+      "publishedCents": 50,
+      "agrees": true
+    },
+    {
+      "slot": 1,
+      "passIndex": 0,
+      "recomputed": "spare-parts",
+      "published": "spare-parts",
+      "recomputedCents": 25,
+      "publishedCents": 25,
+      "agrees": true
+    },
+    {
+      "slot": 0,
+      "passIndex": 0,
+      "recomputed": "spare-parts",
+      "published": "spare-parts",
+      "recomputedCents": 25,
+      "publishedCents": 25,
+      "agrees": true
+    }
+  ],
+  "root": "4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9",
+  "publishedRoot": "4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9",
+  "rootAgrees": true,
+  "claimsVerified": 7,
+  "claimsExpected": 7,
+  "backfilledSlots": [],
+  "actors": [
+    {
+      "id": "player",
+      "role": "crew",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 543.2499999999962,
+      "y": 75.3333333333331
+    },
+    {
+      "id": "bot-0",
+      "role": "crew",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 651.3333333333338,
+      "y": 223.91666666666683
+    },
+    {
+      "id": "bot-1",
+      "role": "impostor",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 1423.9166666666838,
+      "y": 404.7499999999992
+    },
+    {
+      "id": "bot-2",
+      "role": "crew",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 256.0833333333337,
+      "y": 77.41666666666544
+    },
+    {
+      "id": "bot-3",
+      "role": "impostor",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 1359.3333333333524,
+      "y": 1170.1666666666672
+    },
+    {
+      "id": "bot-4",
+      "role": "crew",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 1038.833333333339,
+      "y": 238.2500000000023
+    },
+    {
+      "id": "bot-5",
+      "role": "crew",
+      "alive": true,
+      "tasksDone": 0,
+      "x": 1297.9999999999927,
+      "y": 1181.1666666666702
+    }
+  ]
+}

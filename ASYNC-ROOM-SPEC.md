@@ -176,3 +176,48 @@ by replay.
    settling. Demos the whole format with zero infrastructure.
 4. **Server-authoritative room** — turn loop, deadlines, join window, custodial escrow.
 5. **Escrow contract + claims** — merkle root posted at settle, claims any time.
+
+---
+
+## 13. Spike results — what is now PROVEN
+
+Both spikes are implemented and independently re-run by the owner; 13/13 checks pass.
+Evidence lives in `experiments/room-log/` (`src/`, `logs/`, `out/checks-report.json`).
+
+**Per-actor input path (Spike A).** `Match.update` gains an optional third parameter — an
+`ActorInputMap` — without changing existing call sites. Backward compatibility is proven
+*per frame*, not asserted: with the same seed and the same 3,600-frame scripted stream,
+the state digest is identical before and after the change on both a 6-actor config
+(`c41cf964…`) and a 7-actor config (`41c57981…`) — 3600/3600 frames each. A supplied map
+diverges at frame 0, so the new path is genuinely live, and an actor with no supplied
+input is still driven by its bot brain (the cold-start backfill).
+
+**The trust anchor (Spike B).** One room log replayed by two independent processes in
+opposite event order reaches the identical state digest `97e44524…` and the identical
+merkle root `4a31be17…`, with 7/7 sealed-run commitments and 7/7 claim proofs verifying.
+
+**Seed separation — the amendment this proved necessary.** A room must commit to **two**
+independent seeds: `seedMatch` (station, roster, roles, bots — hidden until close) and
+`seedDrop` (the cache draws — revealed with the settlement). Publishing the drops
+therefore cannot reveal the impostors: with drops published and `seedMatch` sealed, a
+243-candidate derivation and an exhaustive 1,048,576 room-code sweep both fail to recover
+the roster or the roles, while the control *with* the revealed seed reproduces
+`bot-1, bot-3` exactly. Had the drops derived from the match seed, publishing a payout
+would have leaked the game.
+
+**Tamper resistance, demonstrated rather than claimed.** Flipping one input byte breaks
+the commitment and the state digest; flipping one drip breaks the published root and the
+slot's claim proof; dropping a join event is rejected; reusing a `(slot, passIndex)` pair
+is rejected and leaves the settle leaf disagreeing with the drawn caches.
+
+## 14. Boundaries found while building (open work, not defects)
+
+1. **The input map is movement-only.** A supplied actor can walk, but kills, vents,
+   console use and votes remain player-scoped, so a supplied impostor slot cannot kill.
+   Widening the verbs is the next engine task, and is required before a seven-human room
+   is a *game* rather than a walking demo.
+2. **One match, seven streams — not seven runs.** The spike drives a single match with
+   per-actor streams; §6's "seven separate runs of one seed" is the other topology. Both
+   are viable, they have different fairness stories (shared state vs independent runs),
+   and one must be chosen before the server is written.
+3. Escrow, custody, on-chain claims and no-show economics remain unbuilt.

@@ -1,0 +1,178 @@
+
+[PASS] economy: cache table sums to 10000 bps with EV 0.90 RF
+    Scrap Metal: 2100bps / 0c
+    Spare Parts: 3000bps / 25c
+    Circuit Board: 1900bps / 50c
+    Power Cell: 1500bps / 100c
+    Rare Alloy: 900bps / 200c
+    Quantum Core: 400bps / 500c
+    Genesis Artifact: 200bps / 1000c
+    bps total = 10000 (exact 10000)
+    EV = 90 cents = 0.90 RF
+    P(pays anything) = 7900 bps = 79%
+
+[PASS] economy: 100k seeded draws land on the table
+    Scrap Metal       expected 2100bps  observed 2104bps  delta     4  ok
+    Spare Parts       expected 3000bps  observed 3006bps  delta     6  ok
+    Circuit Board     expected 1900bps  observed 1884bps  delta   -16  ok
+    Power Cell        expected 1500bps  observed 1487bps  delta   -13  ok
+    Rare Alloy        expected  900bps  observed  917bps  delta    17  ok
+    Quantum Core      expected  400bps  observed  402bps  delta     2  ok
+    Genesis Artifact  expected  200bps  observed  201bps  delta     1  ok
+    (100000 draws of roll(seedDrop, slot, passIndex) — tolerance ±400bps from sampling noise)
+
+[PASS] log room-a: two streams, seven joins, no mix-ups
+    match events = 24, economy events = 23, sealed streams = 7
+    no problem found by the structural verifier
+
+[PASS] log room-b: a no-show seat is legal and marked
+    problems = none
+    no-show seats = [4] (their run is not sealed; the bot backfills)
+
+[PASS] replay room-a (forward, in-process) verifies
+    problems = none
+    sealed runs checked = 7
+    state hash (replayed) = 97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a
+    state hash (published) = 97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a
+    state hash agrees = true
+    root (recomputed) = 4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9
+    root (published) = 4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9
+    root agrees = true
+    claims verified = 7/7
+    final phase = play at sim time 180.00000000003539
+
+[PASS] replay room-a (reverse order, in-process) is order-independent
+    forward : hash=97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a root=4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9 drops emitted s0,s1,s2,s3,s4,s5,s6
+    reverse : hash=97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a root=4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9 drops emitted s6,s5,s4,s3,s2,s1,s0
+    problems = 0
+    canonical drops identical = true | hashes identical = true | roots identical = true
+
+[PASS] CENTRAL CLAIM: two independent processes replay one log identically
+    process A (replay.mjs --order forward):
+      state hash = 97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a
+      drops      = s0p0:spare-parts/25c s1p0:spare-parts/25c s2p0:circuit-board/50c s3p0:circuit-board/50c s4p0:scrap-metal/0c s5p0:power-cell/100c s6p0:circuit-board/50c
+      merkle root = 4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9
+    process B (replay.mjs --order reverse):
+      state hash = 97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a
+      drops      = s6p0:circuit-board/50c s5p0:power-cell/100c s4p0:scrap-metal/0c s3p0:circuit-board/50c s2p0:circuit-board/50c s1p0:spare-parts/25c s0p0:spare-parts/25c
+      merkle root = 4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9
+    identical: state hash true | drops true (draw-for-draw; only the emission order differs) | root true
+    both match the steward's recorded truth: true
+    both processes reported zero problems: true
+
+[PASS] backfill: an unsupplied seat is driven by its bot brain
+    slot 4 is a no-show → actor bot-3 has no entry in the input map
+    final position = (2161.5, 136.5) vs spawn (2000, 700) → moved 586.2 units
+    bot tasks completed = 0
+    state hash agrees with the published one = true
+
+1. INDEPENDENCE (crossed fixture rooms, same code path as ROOM-A)
+   same seedDrop, different seedMatch : drip layer identical = YES | roles differ = YES
+     drips  = 0:spare-parts/25 1:circuit-board/50 2:spare-parts/25 3:circuit-board/50 4:spare-parts/25 5:scrap-metal/0 6:circuit-board/50
+     roles  = [bot-0, bot-1] vs [bot-0, bot-4]
+   same seedMatch, different seedDrop : roles identical = YES | roster identical = YES | drips differ = YES
+     drips  = 0:spare-parts/25 1:circuit-board/50 2:spare-parts/25 3:circuit-board/50 4:spare-parts/25 5:scrap-metal/0 6:circuit-board/50
+     drips  = 0:rare-alloy/200 1:scrap-metal/0 2:circuit-board/50 3:power-cell/100 4:spare-parts/25 5:rare-alloy/200 6:power-cell/100
+
+2. THE PUBLISHED VIEW (everything a reader has after settlement, before close)
+   cache draws with outcomes and amounts : 7 (s0:spare-parts/25c s1:spare-parts/25c s2:circuit-board/50c s3:circuit-board/50c s4:scrap-metal/0c s5:power-cell/100c s6:circuit-board/50c)
+   contains the seedDrop preimage         : YES (revealed with the settlement)
+   contains seedMatch                     : NO — still sealed
+   contains any revealed action stream    : NO — sealed to a hash
+
+3. THE ATTEMPT
+   A. candidates built from published fields (real engine, 243 candidates):
+      reproduce the room's lobby fingerprint : 0
+      reproduce fingerprint AND impostor ids : 0
+   B. exhaustive sweep of the game's own 4-character room-code space (32^4 = 1048576 codes, 1048576 swept in 4429 ms):
+      codes whose impostor set equals the room's : 70310  (the class is 1-in-15 — matching it identifies nothing)
+      codes whose lobby fingerprint matches      : 0
+      codes matching fingerprint AND roles      : 0
+      the room's own seed hashSeed(seedMatch) is in this space : NO (seedMatch is a 64-char secret, not a 4-char code)
+
+4. THE CONTROL (the same derivation, given the seedMatch that close reveals)
+   lobby fingerprint reproduced exactly        : YES
+   impostor ids reproduced exactly             : YES  [bot-1, bot-3]
+   mirrored role draw agrees with the engine   : YES
+
+SEED SEPARATION RESULT: PASS — the published drip layer does not determine the impostor ids
+
+[PASS] seed separation: the drops do not leak the impostor ids
+    1. INDEPENDENCE (crossed fixture rooms, same code path as ROOM-A)
+       same seedDrop, different seedMatch : drip layer identical = YES | roles differ = YES
+         drips  = 0:spare-parts/25 1:circuit-board/50 2:spare-parts/25 3:circuit-board/50 4:spare-parts/25 5:scrap-metal/0 6:circuit-board/50
+         roles  = [bot-0, bot-1] vs [bot-0, bot-4]
+       same seedMatch, different seedDrop : roles identical = YES | roster identical = YES | drips differ = YES
+         drips  = 0:spare-parts/25 1:circuit-board/50 2:spare-parts/25 3:circuit-board/50 4:spare-parts/25 5:scrap-metal/0 6:circuit-board/50
+         drips  = 0:rare-alloy/200 1:scrap-metal/0 2:circuit-board/50 3:power-cell/100 4:spare-parts/25 5:rare-alloy/200 6:power-cell/100
+    
+    2. THE PUBLISHED VIEW (everything a reader has after settlement, before close)
+       cache draws with outcomes and amounts : 7 (s0:spare-parts/25c s1:spare-parts/25c s2:circuit-board/50c s3:circuit-board/50c s4:scrap-metal/0c s5:power-cell/100c s6:circuit-board/50c)
+       contains the seedDrop preimage         : YES (revealed with the settlement)
+       contains seedMatch                     : NO — still sealed
+       contains any revealed action stream    : NO — sealed to a hash
+    
+    3. THE ATTEMPT
+       A. candidates built from published fields (real engine, 243 candidates):
+          reproduce the room's lobby fingerprint : 0
+          reproduce fingerprint AND impostor ids : 0
+       B. exhaustive sweep of the game's own 4-character room-code space (32^4 = 1048576 codes, 1048576 swept in 4429 ms):
+          codes whose impostor set equals the room's : 70310  (the class is 1-in-15 — matching it identifies nothing)
+          codes whose lobby fingerprint matches      : 0
+          codes matching fingerprint AND roles      : 0
+          the room's own seed hashSeed(seedMatch) is in this space : NO (seedMatch is a 64-char secret, not a 4-char code)
+    
+    4. THE CONTROL (the same derivation, given the seedMatch that close reveals)
+       lobby fingerprint reproduced exactly        : YES
+       impostor ids reproduced exactly             : YES  [bot-1, bot-3]
+       mirrored role draw agrees with the engine   : YES
+    
+    SEED SEPARATION RESULT: PASS — the published drip layer does not determine the impostor ids
+
+[PASS] tamper T1: flip one input byte → state hash mismatch
+    required failure: state hash mismatch
+    one byte of slot 2: frame 10757 of 10800 0x02 -> 0x00 (the last leg of the run is cut short)
+    commitment: revealed stream 2 does not match its commitment
+    state:      published state hash = 97e4452498bc7b3a81440468b420d807900d6f41b4330f186473c0b575942d1a
+                replayed  state hash = e2acec3742f522fe0cdef93bd6fea65fb7fd4233493c319d8897fde06d4c1f12
+                verifier rejects the replayed hash: true
+    frames tried = 1 of 24
+
+[PASS] tamper T2: flip one drip → merkle root mismatch
+    required failure: root mismatch + verifier rejects the draw
+    draw:      slot 3 pass 0 published as "genesis-artifact" (1000c); roll(seedDrop, 3, 0) says "circuit-board" (50c) → verifier agrees: false
+    root:      published root = 4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9
+               root over the tampered drip layer = 2c3d6b17406ec0abea3924563988066135727f776e81852b8a96102d96310f49
+               roots equal: false
+    claim:     slot 3 proof against the tampered root verifies: false
+    structure: settle leaf for slot 3 is 50c, the drawn caches add to 1000c
+
+[PASS] tamper T3: drop one join event → rejection
+    required failure: log rejected (missing join)
+    structure: 6 join events, expected 7 | 7 sealed streams for 6 supplied slots | cache draw for slot 5 has no join
+    replay:    verifier accepts: false
+    replay:    entitlement root over the surviving joins = dd8fceb4b45786c65950136c51aca85e746a0da25321c4c7df30d6feae659b3c
+    replay:    published root = 4a31be17a1cbbf600f116ecda5d45c1ebf6ce878cd257bb50db01bdded648fa9
+
+[PASS] tamper T4: reuse a passIndex → rejection
+    required failure: duplicate (slot, passIndex) rejected
+    structure: cache draw reused (slot 1, passIndex 0) | settle leaf for slot 1 is 25c, the drawn caches add to 50c
+    replay:    verifier accepts: false
+    replay:    drops checked = 8, all agree = true
+
+================ CHECKS: 13/13 PASS ================
+  PASS  economy: cache table sums to 10000 bps with EV 0.90 RF
+  PASS  economy: 100k seeded draws land on the table
+  PASS  log room-a: two streams, seven joins, no mix-ups
+  PASS  log room-b: a no-show seat is legal and marked
+  PASS  replay room-a (forward, in-process) verifies
+  PASS  replay room-a (reverse order, in-process) is order-independent
+  PASS  CENTRAL CLAIM: two independent processes replay one log identically
+  PASS  backfill: an unsupplied seat is driven by its bot brain
+  PASS  seed separation: the drops do not leak the impostor ids
+  PASS  tamper T1: flip one input byte → state hash mismatch
+  PASS  tamper T2: flip one drip → merkle root mismatch
+  PASS  tamper T3: drop one join event → rejection
+  PASS  tamper T4: reuse a passIndex → rejection
+
+report written to /home/brewuser/projects/friendsdk/experiments/room-log/out/checks-report.json
