@@ -70,9 +70,11 @@ the known limitations.
 
 ## Credits
 
-Built with FriendSDK v0.1.2 by Rare Friends. Artwork for the Friend itself comes
-from the owner's canonical on-chain sprite; all other pixel art, UI and audio cues
-are original to this project.
+Built with FriendSDK v0.1.2 by Rare Friends. All **character** artwork — your
+Friend, the crewmates and the impostor's frame — is canonical on-chain Rare
+Friends artwork, read at runtime; the station geometry, the UI and the audio
+cues are drawn and generated in code. See *Artwork & assets provenance* below
+for exactly which is which.
 
 
 ## Artwork & assets provenance
