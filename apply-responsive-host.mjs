@@ -11,17 +11,28 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const path = process.argv[2] ?? "docs/index.html";
-const marker = "--rf-game-max-width";
-// 3:2 means the width may be at most 1.5x the viewport height; the 12px keeps a
-// scrollbar from forming, so this takes whichever dimension actually binds.
-const style = "<style>:root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}</style>";
+const marker = "responsive-host";
+// 3:2 means the width may be at most 1.5x the viewport height; 3:4 is 0.75x. The 12px
+// keeps a scrollbar from forming, so this takes whichever dimension actually binds.
+// Phones get a portrait frame, because a 3:2 game in a 390x844 viewport wastes most of
+// the screen. The renderer sizes the world to the frame box, so nothing letterboxes.
+const styles = [
+  ":root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}",
+  "@media (max-width:620px){:root{--rf-game-aspect-ratio:3 / 4;--rf-game-max-width:min(100vw,calc(75vh - 12px))}}",
+];
+const block = `<style>/* ${marker} */\n${styles.join("\n")}\n</style>`;
 
 const html = readFileSync(path, "utf8");
-if (html.includes(marker)) {
-  console.log(`${path}: responsive override already present`);
+// Replace an earlier block this script inserted, so re-running keeps it current.
+const previous = new RegExp(`<style>/\\* ${marker} \\*/[\\s\\S]*?</style>`, "u");
+const cleaned = html.replace(previous, "");
+const patched = cleaned.replace("</head>", `${block}</head>`);
+if (patched === html) {
+  console.log(`${path}: responsive override already current`);
 } else {
-  const patched = html.replace("</head>", `${style}</head>`);
-  if (patched === html) throw new Error(`${path}: no </head> to insert the override before`);
+  if (patched === cleaned && cleaned.includes("</head>") === false) {
+    throw new Error(`${path}: no </head> to insert the override before`);
+  }
   writeFileSync(path, patched);
-  console.log(`${path}: full-screen frame override applied`);
+  console.log(`${path}: responsive override applied (desktop fills the screen, phones get a portrait frame)`);
 }

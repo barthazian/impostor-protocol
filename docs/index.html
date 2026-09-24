@@ -4,4 +4,12 @@
    binds. On a phone it resolves to the full width (already the 3:2 maximum); on a
    1920x1080 desktop it grows from 960x640 to about 1608x1072. #root uses margin:auto,
    so the frame stays centred. Re-apply after `friendsdk build` regenerates this file. */
-:root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}</style></head><body><main id="root"></main><script src="./runtime.js"></script></body></html>
+:root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}
+/* Portrait on phones: a 3:2 frame in a 390x844 viewport uses barely a third of the
+   screen, so narrow viewports get a 3:4 frame instead (~390x520). The renderer sizes
+   the world to the frame box, so the taller frame fills with world rather than
+   letterboxing. The width cap follows the ratio: 3:4 means width <= 0.75 x height. */
+@media (max-width:620px){:root{--rf-game-aspect-ratio:3 / 4;--rf-game-max-width:min(100vw,calc(75vh - 12px))}}</style><style>/* responsive-host */
+:root{--rf-game-max-width:min(100vw,calc(150vh - 12px))}
+@media (max-width:620px){:root{--rf-game-aspect-ratio:3 / 4;--rf-game-max-width:min(100vw,calc(75vh - 12px))}}
+</style></head><body><main id="root"></main><script src="./runtime.js"></script></body></html>
