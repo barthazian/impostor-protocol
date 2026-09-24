@@ -1,0 +1,181 @@
+/* Rare Friends: Impostor Protocol — page-level layout inside the sandboxed frame.
+   The SDK frame owns the outer chrome; everything here stays inside the game. */
+
+.ip-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #05070c;
+  color: #e8edf7;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ip-boot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  background: #05070c;
+  color: #e8edf7;
+}
+
+.ip-boot h2 { margin: 0; font-size: clamp(16px, 2.4vw, 22px); letter-spacing: 0.06em; color: #ccff00; }
+.ip-boot p { margin: 0; max-width: 46ch; color: #8b9bb4; }
+.ip-boot button {
+  margin-top: 6px;
+  padding: 10px 18px;
+  min-height: 44px;
+  border: 1px solid #263043;
+  border-radius: 8px;
+  background: #141a24;
+  color: #e8edf7;
+  font: inherit;
+  cursor: pointer;
+}
+.ip-boot button:hover { border-color: #ccff00; color: #ccff00; }
+
+.ip-stage { position: absolute; inset: 0; }
+
+.ip-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  cursor: crosshair;
+  /* Keyboard input is handled at window level and every control has a DOM
+     button, so the canvas is a pure surface: no focus ring around the art. */
+  outline: none;
+  border: 0;
+}
+
+/* The actionable interaction prompt. The HUD shows the hint; this is the target. */
+.ip-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 56px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 168px;
+  min-height: 46px;
+  padding: 7px 16px;
+  border: 1px solid #ccff00;
+  border-radius: 9px;
+  background: rgba(11, 14, 20, 0.92);
+  color: #ccff00;
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+.ip-prompt strong { font-size: clamp(12px, 1.5vw, 15px); font-weight: 600; }
+.ip-prompt small { color: #8b9bb4; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+.ip-prompt:hover:not(:disabled) { background: #1b2331; }
+.ip-prompt:disabled { opacity: 0.5; cursor: default; }
+
+.ip-alarm {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid #ff4d4d;
+  border-radius: 8px;
+  background: rgba(38, 6, 6, 0.92);
+  color: #ffd0d0;
+  font-size: clamp(11px, 1.4vw, 14px);
+  letter-spacing: 0.05em;
+  animation: ip-pulse 1.1s ease-in-out infinite;
+}
+
+.ip-toast {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: 46%;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid #263043;
+  border-radius: 8px;
+  background: rgba(11, 14, 20, 0.9);
+  color: #cfe0ff;
+  font-size: clamp(11px, 1.3vw, 13px);
+}
+
+.ip-busy {
+  position: absolute;
+  right: 10px;
+  bottom: 72px;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid #263043;
+  border-radius: 8px;
+  background: rgba(11, 14, 20, 0.92);
+  color: #8b9bb4;
+  font-size: 11px;
+}
+
+/* Clear of the SDK runtime's bottom-right menu button. */
+.ip-leave {
+  position: absolute;
+  right: 10px;
+  bottom: 72px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid #263043;
+  border-radius: 8px;
+  background: rgba(11, 14, 20, 0.86);
+  color: #8b9bb4;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ip-leave:hover { border-color: #ff4d4d; color: #ff4d4d; }
+
+/* Sits just above the SDK wallet toolbar in the bottom-left corner. */
+.ip-footer {
+  position: absolute;
+  left: 10px;
+  bottom: 68px;
+  margin: 0;
+  max-width: 340px;
+  color: #6f7f99;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #000;
+}
+
+@keyframes ip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-alarm { animation: none; }
+}
+
+/* Keep the small-screen layout honest: the SDK frame is 3:2, so at 360 px the
+   viewport is only ~240 px tall. Trim the chrome rather than covering the game. */
+@media (max-width: 560px) {
+  .ip-root { font-size: 12px; }
+  .ip-footer { max-width: 46%; font-size: 10px; }
+  .ip-toast { max-width: 60%; }
+  .ip-prompt { bottom: 52px; min-width: 148px; padding: 6px 12px; }
+}
+
+/* Ambient game chrome sits below the modal overlays the game raises (task list,
+   minigame, locker, settings) so a dialog is never painted under a hint. */
+.ip-footer, .ip-prompt, .ip-alarm, .ip-toast, .ip-busy, .ip-leave { z-index: 5; }

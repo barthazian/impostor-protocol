@@ -1,0 +1,799 @@
+/* IMPOSTOR PROTOCOL — every in-frame screen.
+ *
+ * Conventions that matter when this file is loaded next to the SDK chrome:
+ *  - all selectors are scoped under `.ip` and carry two classes, so they win
+ *    over the host frame's generic `.rf-game-frame button` / `.rf-frame-scrim button`
+ *    rules without depending on stylesheet order;
+ *  - the root is the query container (`container: ip / inline-size`), so cqw
+ *    clamps track the sandbox frame width, from 960px down to 360px;
+ *  - every long list scrolls inside its own box; the frame never scrolls.
+ */
+
+.ip {
+  --ip-bg: #0b0e14;
+  --ip-panel: #141a24;
+  --ip-sunken: #101620;
+  --ip-raise: #1b2430;
+  --ip-line: #263043;
+  --ip-hairline: #1d2637;
+  --ip-accent: #ccff00;
+  --ip-danger: #ff4d4d;
+  --ip-info: #38fedc;
+  --ip-text: #e8edf7;
+  --ip-muted: #8b9bb4;
+  position: relative;
+  isolation: isolate;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  color: var(--ip-text);
+  background: var(--ip-bg);
+  font: clamp(11px, 1.3vw, 13px)/1.45 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  container: ip / inline-size;
+}
+
+.ip *,
+.ip *::before,
+.ip *::after { box-sizing: border-box; }
+
+.ip h1,
+.ip h2,
+.ip h3,
+.ip h4,
+.ip p,
+.ip ul,
+.ip ol,
+.ip li,
+.ip dl,
+.ip dd,
+.ip dt,
+.ip figure,
+.ip fieldset { margin: 0; padding: 0; border: 0; }
+
+.ip ul,
+.ip ol { list-style: none; }
+
+.ip button,
+.ip input,
+.ip label,
+.ip table,
+.ip kbd { font: inherit; color: inherit; }
+
+.ip table { width: 100%; border-collapse: collapse; }
+
+.ip button { border-radius: 0; }
+
+.ip :focus-visible { outline: 2px solid var(--ip-accent); outline-offset: 2px; }
+
+/* ---------- primitives ---------- */
+
+.ip .ip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: clamp(28px, 4.2cqw, 38px);
+  padding: 0 clamp(9px, 1.4cqw, 16px);
+  border: 1px solid var(--ip-line);
+  background: var(--ip-raise);
+  color: var(--ip-text);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ip .ip-btn:hover:not(:disabled) { border-color: var(--ip-accent); color: var(--ip-accent); }
+.ip .ip-btn:disabled { opacity: 0.42; cursor: default; }
+.ip .ip-btn--primary { background: var(--ip-accent); border-color: var(--ip-accent); color: var(--ip-bg); font-weight: 700; }
+.ip .ip-btn--primary:hover:not(:disabled) { background: #dcff5c; color: var(--ip-bg); }
+.ip .ip-btn--danger { border-color: #ff4d4d99; color: var(--ip-danger); background: #24121a; }
+.ip .ip-btn--danger:hover:not(:disabled) { border-color: var(--ip-danger); color: #ffd9d9; }
+.ip .ip-btn--sm { min-height: clamp(24px, 3.4cqw, 31px); padding: 0 clamp(7px, 1cqw, 11px); font-size: clamp(9.5px, 1.05cqw, 11px); }
+.ip .ip-btn--wide { width: 100%; }
+
+.ip .ip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 2px 7px;
+  border: 1px solid var(--ip-line);
+  background: var(--ip-sunken);
+  color: var(--ip-muted);
+  font-size: clamp(9px, 1.02cqw, 10.5px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ip .ip-chip--accent { border-color: #ccff0066; color: var(--ip-accent); }
+.ip .ip-chip--danger { border-color: #ff4d4d66; color: var(--ip-danger); }
+.ip .ip-chip--info { border-color: #38fedc66; color: var(--ip-info); }
+
+.ip .ip-sim {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 3px 10px;
+  border: 1px solid var(--ip-info);
+  background: #38fedc14;
+  color: var(--ip-info);
+  font-size: clamp(9.5px, 1.05cqw, 11px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ip .ip-dot {
+  flex: 0 0 auto;
+  width: clamp(10px, 1.2cqw, 13px);
+  height: clamp(10px, 1.2cqw, 13px);
+  border: 1px solid #ffffff30;
+  box-shadow: inset 0 0 0 1px #00000066;
+}
+
+.ip .ip-dot--skip { background: transparent; border-style: dashed; border-color: #ffffff55; }
+
+.ip .ip-card {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 0.9cqw, 10px);
+  min-width: 0;
+  padding: clamp(9px, 1.3cqw, 15px);
+  background: var(--ip-panel);
+  border: 1px solid var(--ip-line);
+}
+
+.ip .ip-card--wide { grid-column: 1 / -1; }
+
+.ip .ip-eyebrow {
+  color: var(--ip-muted);
+  font-size: clamp(9px, 1cqw, 10.5px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.ip .ip-title {
+  font-size: clamp(16px, 3cqw, 30px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ip .ip-h {
+  color: var(--ip-accent);
+  font-size: clamp(11px, 1.5cqw, 15px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ip .ip-sub { color: var(--ip-muted); font-size: clamp(10px, 1.1cqw, 12px); }
+
+.ip .ip-note { color: var(--ip-muted); font-size: clamp(9.5px, 1.08cqw, 11.5px); line-height: 1.5; overflow-wrap: anywhere; }
+.ip .ip-note b,
+.ip .ip-note strong { color: var(--ip-text); font-weight: 700; }
+.ip .ip-note em { color: var(--ip-accent); font-style: normal; }
+
+.ip .ip-bar {
+  position: relative;
+  height: clamp(6px, 0.9cqw, 10px);
+  background: var(--ip-bg);
+  border: 1px solid var(--ip-line);
+  overflow: hidden;
+}
+
+.ip .ip-bar > i { display: block; height: 100%; background: var(--ip-accent); transition: width 0.2s linear; }
+.ip .ip-bar--info > i { background: var(--ip-info); }
+.ip .ip-bar--danger > i { background: var(--ip-danger); }
+
+.ip .ip-table { font-size: clamp(9.5px, 1.1cqw, 12px); }
+.ip .ip-table th,
+.ip .ip-table td { padding: clamp(3px, 0.5cqw, 6px) 6px; border-bottom: 1px solid var(--ip-hairline); text-align: left; vertical-align: top; }
+.ip .ip-table thead th { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; }
+.ip .ip-table tbody th { font-weight: 400; }
+.ip .ip-table td:last-child,
+.ip .ip-table th:last-child { text-align: right; white-space: nowrap; }
+.ip .ip-table tr[data-total="true"] th,
+.ip .ip-table tr[data-total="true"] td { border-bottom: 0; color: var(--ip-accent); padding-top: clamp(5px, 0.8cqw, 8px); }
+
+.ip .ip-feedback { min-width: 0; color: var(--ip-muted); font-size: clamp(9.5px, 1.08cqw, 11.5px); overflow-wrap: anywhere; }
+.ip .ip-feedback[data-tone="error"] { color: var(--ip-danger); }
+.ip .ip-feedback[data-tone="message"] { color: var(--ip-info); }
+.ip .ip-feedback[data-tone="note"] { color: var(--ip-muted); }
+
+.ip .ip-input {
+  min-width: 0;
+  padding: clamp(6px, 0.9cqw, 9px) clamp(8px, 1.1cqw, 12px);
+  border: 1px solid var(--ip-line);
+  background: var(--ip-bg);
+  color: var(--ip-text);
+}
+
+.ip .ip-input:focus-visible { outline: 2px solid var(--ip-accent); outline-offset: 1px; }
+.ip .ip-input::placeholder { color: #55637a; }
+
+.ip .ip-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: clamp(8px, 1.1cqw, 14px); }
+
+.ip .ip-kv { display: flex; flex-wrap: wrap; gap: 5px; }
+.ip .ip-kv > span {
+  display: inline-flex;
+  gap: 0.5em;
+  align-items: baseline;
+  padding: 3px 8px;
+  background: var(--ip-sunken);
+  border: 1px solid var(--ip-line);
+  font-size: clamp(9px, 1.02cqw, 10.5px);
+}
+.ip .ip-kv > span > em { color: var(--ip-muted); font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; }
+.ip .ip-kv > span > b { color: var(--ip-text); }
+
+/* ---------- lobby ---------- */
+
+/* Full-screen phases replace the station view. index.tsx renders them as
+   siblings of the canvas inside the stage, so they must cover the stage rather
+   than sit in the flow below it. */
+.ip.ip-lobby,
+.ip.ip-brief,
+.ip.ip-meet,
+.ip.ip-eject,
+.ip.ip-debrief {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+}
+
+.ip.ip-lobby,
+.ip.ip-brief,
+.ip.ip-meet,
+.ip.ip-debrief {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(8px, 1.1cqw, 14px);
+  padding: clamp(10px, 1.4cqw, 18px);
+}
+
+.ip-lobby-head,
+.ip-brief-head,
+.ip-debrief-head,
+.ip-meet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(8px, 1.2cqw, 16px);
+  min-width: 0;
+}
+
+.ip-head-left { display: grid; gap: 4px; min-width: 0; }
+.ip-head-right { display: grid; gap: 6px; justify-items: end; min-width: 0; }
+.ip-head-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+
+.ip-lobby-body,
+.ip-brief-body,
+.ip-debrief-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 268px), 1fr));
+  gap: clamp(8px, 1.1cqw, 12px);
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.ip-lobby-foot,
+.ip-brief-foot,
+.ip-debrief-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(6px, 1cqw, 12px);
+  align-items: center;
+  justify-content: space-between;
+  padding-top: clamp(6px, 1cqw, 10px);
+  border-top: 1px solid var(--ip-line);
+}
+
+/* The SDK frame's own toolbar lives in the bottom-left corner of the sandbox;
+   keep the feedback line and actions above it. */
+.ip-lobby-foot,
+.ip-brief-foot,
+.ip-debrief-foot { padding-bottom: clamp(24px, 4.4cqw, 44px); }
+
+.ip-foot-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ip-start {
+  min-height: clamp(34px, 5.2cqw, 46px);
+  padding-inline: clamp(14px, 2.4cqw, 26px);
+  font-size: clamp(11px, 1.35cqw, 14px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ip-tiers { display: grid; gap: 6px; }
+
+.ip-tier {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  padding: clamp(7px, 1cqw, 10px) clamp(8px, 1.1cqw, 12px);
+  background: var(--ip-sunken);
+  border: 1px solid var(--ip-hairline);
+  cursor: pointer;
+}
+
+.ip-tier:hover { border-color: #ccff0066; }
+.ip-tier:focus-within { outline: 2px solid var(--ip-accent); outline-offset: 2px; }
+.ip-tier[data-selected="true"] { background: var(--ip-raise); border-color: var(--ip-accent); }
+.ip-tier input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.ip-tier-top { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; justify-content: space-between; }
+.ip-tier-top b { font-size: clamp(11px, 1.3cqw, 14px); letter-spacing: 0.1em; text-transform: uppercase; }
+.ip-tier[data-selected="true"] .ip-tier-top b { color: var(--ip-accent); }
+.ip-tier-top span { color: var(--ip-muted); font-size: clamp(9px, 1.02cqw, 10.5px); white-space: nowrap; }
+.ip-tier-sub { color: var(--ip-muted); font-size: clamp(9px, 1.02cqw, 10.5px); }
+
+.ip-room { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+.ip .ip-code {
+  flex: 1 1 96px;
+  padding-left: calc(0.5em + 8px);
+  font-size: clamp(14px, 2.1cqw, 20px);
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.ip-roster { display: grid; gap: 4px; max-height: min(300px, 100%); overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.ip-roster li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 7px;
+  background: var(--ip-sunken);
+  border: 1px solid var(--ip-hairline);
+}
+.ip-roster li[data-you="true"] { border-color: #ccff0059; background: var(--ip-raise); }
+.ip-roster-name { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; min-width: 0; }
+.ip-roster-name b { font-size: clamp(10px, 1.1cqw, 12px); }
+.ip-tag { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); overflow-wrap: anywhere; text-align: right; }
+
+/* ---------- briefing ---------- */
+
+.ip-role {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: clamp(10px, 1.4cqw, 16px);
+  background: linear-gradient(180deg, var(--ip-panel), #0f131b);
+  border: 1px solid var(--ip-line);
+}
+
+.ip-role h2 { font-size: clamp(20px, 4.6cqw, 44px); line-height: 1; letter-spacing: 0.1em; text-transform: uppercase; }
+.ip-role[data-role="crew"] h2 { color: var(--ip-accent); text-shadow: 0 0 20px #ccff0040; }
+.ip-role[data-role="impostor"] h2 { color: var(--ip-danger); text-shadow: 0 0 20px #ff4d4d46; }
+.ip-role[data-role="impostor"] { border-color: #ff4d4d66; }
+
+.ip-plan { display: grid; gap: 5px; }
+.ip-plan li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: baseline; font-size: clamp(10px, 1.12cqw, 12.5px); }
+.ip-plan li::before { content: "\25B8"; color: var(--ip-accent); }
+.ip-plan li[data-danger="true"]::before { color: var(--ip-danger); }
+
+.ip-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: clamp(6px, 0.9cqw, 10px) clamp(8px, 1.1cqw, 13px);
+  background: var(--ip-sunken);
+  border: 1px solid var(--ip-line);
+  cursor: pointer;
+}
+.ip-toggle:focus-within { outline: 2px solid var(--ip-accent); outline-offset: 2px; }
+.ip-toggle input { flex: 0 0 auto; width: 16px; height: 16px; margin: 0; accent-color: var(--ip-accent); }
+.ip-toggle-text { display: grid; gap: 1px; }
+.ip-toggle-text b { font-weight: 400; font-size: clamp(10px, 1.12cqw, 12.5px); }
+.ip-toggle-text span { color: var(--ip-muted); font-size: clamp(9px, 1.02cqw, 10.5px); }
+
+/* ---------- HUD (overlay on the live station) ---------- */
+
+.ip.ip-hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(5px, 0.9cqw, 10px);
+  padding: clamp(8px, 1.1cqw, 14px);
+  pointer-events: none;
+  background: transparent;
+}
+
+.ip-hud-top { display: flex; align-items: flex-start; justify-content: space-between; gap: clamp(6px, 1cqw, 12px); min-width: 0; }
+.ip-hud-left { display: grid; gap: 5px; min-width: 0; justify-items: start; }
+/* index.tsx owns the top-right toast and the top-centre alarm; keep the button
+   cluster and the sabotage banner clear of both. */
+.ip-hud-right { display: grid; gap: 5px; min-width: 0; justify-items: end; margin-top: clamp(26px, 4.4cqw, 44px); }
+.ip-hud-banner { position: absolute; top: 0; left: 50%; transform: translateX(-50%); display: grid; gap: 4px; justify-items: center; max-width: min(64%, 420px); }
+.ip-hud-buttons { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-end; }
+
+.ip .ip-hud-btn { pointer-events: auto; background: #141a24f0; }
+.ip .ip-hud-btn[aria-pressed="true"] { border-color: var(--ip-info); color: var(--ip-info); }
+
+.ip-progress { display: grid; gap: 3px; width: 100%; max-width: clamp(170px, 26cqw, 280px); }
+.ip-progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); letter-spacing: 0.1em; text-transform: uppercase; }
+.ip-progress-head b { color: var(--ip-text); font-variant-numeric: tabular-nums; }
+
+.ip-hud-alarm { max-width: min(46ch, 100%); color: var(--ip-info); font-size: clamp(9px, 1.02cqw, 11px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ip-sabotage {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(4px, 0.7cqw, 7px) clamp(8px, 1.1cqw, 12px);
+  border: 1px solid var(--ip-danger);
+  background: #2a0f12f2;
+  color: #ffd9d9;
+  font-size: clamp(9.5px, 1.1cqw, 11.5px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ip-sabotage b { color: #ffffff; font-size: clamp(12px, 1.6cqw, 15px); font-variant-numeric: tabular-nums; }
+
+.ip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: clamp(4px, 0.7cqw, 7px) clamp(8px, 1.1cqw, 12px);
+  background: #0b0e14d9;
+  border: 1px solid var(--ip-line);
+  color: var(--ip-text);
+  font-size: clamp(9.5px, 1.08cqw, 11.5px);
+}
+.ip-hint[data-kind="report"],
+.ip-hint[data-kind="emergency"] { border-color: #ff4d4d99; color: #ffd9d9; }
+.ip-hint[data-kind="kill"] { border-color: #ff4d4d99; }
+
+.ip .ip-keycap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 19px;
+  padding: 0 4px;
+  border: 1px solid var(--ip-accent);
+  color: var(--ip-accent);
+  font-size: clamp(9px, 1.02cqw, 11px);
+  line-height: 1;
+}
+
+.ip-vision { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.ip-vision:empty { display: none; }
+
+.ip-hud-mid { position: relative; display: flex; flex: 1 1 auto; align-items: flex-start; justify-content: flex-end; gap: 8px; min-height: 0; }
+
+.ip-hud-roster {
+  display: grid;
+  gap: 4px;
+  width: min(238px, 64%);
+  max-height: min(320px, 100%);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 8px;
+  background: #141a24f5;
+  border: 1px solid var(--ip-line);
+  pointer-events: auto;
+}
+.ip-hud-roster li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; align-items: center; font-size: clamp(9.5px, 1.05cqw, 11px); }
+.ip-hud-roster li[data-alive="false"] { opacity: 0.45; }
+.ip-hud-roster li[data-alive="false"] .ip-hud-roster-name { text-decoration: line-through; }
+.ip-hud-roster-name { display: flex; flex-wrap: wrap; gap: 5px; align-items: baseline; min-width: 0; }
+.ip-hud-roster-state { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.ip-hud-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: clamp(6px, 1cqw, 12px); }
+.ip-hud-actions { display: flex; gap: 5px; align-items: flex-end; }
+.ip-feed { display: grid; gap: 2px; max-width: min(44ch, 100%); color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); }
+.ip-feed li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- task list overlay ---------- */
+
+.ip.ip-tasklist { position: absolute; inset: 0; z-index: 12; background: transparent; }
+
+.ip-overlay { position: absolute; inset: 0; z-index: 12; display: grid; place-items: center; padding: clamp(8px, 2.2cqw, 22px); padding-bottom: clamp(30px, 6cqw, 62px); }
+.ip-overlay::before { content: ""; position: absolute; inset: 0; background: #05070ac9; }
+.ip-overlay[data-dismissable="true"] { cursor: pointer; }
+
+.ip-sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  background: var(--ip-panel);
+  border: 1px solid var(--ip-line);
+  box-shadow: 0 18px 48px #000000a6;
+}
+.ip-sheet:focus { outline: none; }
+.ip-sheet[data-dismissable="true"] { cursor: default; }
+
+.ip-sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(8px, 1.1cqw, 12px) clamp(10px, 1.4cqw, 16px);
+  background: var(--ip-sunken);
+  border-bottom: 1px solid var(--ip-line);
+}
+
+.ip-sheet-body {
+  display: grid;
+  gap: clamp(8px, 1.1cqw, 14px);
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: clamp(8px, 1.2cqw, 14px) clamp(10px, 1.4cqw, 16px);
+}
+
+.ip-sheet-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(7px, 1cqw, 11px) clamp(10px, 1.4cqw, 16px);
+  background: var(--ip-sunken);
+  border-top: 1px solid var(--ip-line);
+}
+
+.ip-progress-block { display: grid; gap: 5px; }
+
+.ip-zone { display: grid; gap: 5px; }
+.ip-zone > h3 { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; color: var(--ip-muted); font-size: clamp(9px, 1.02cqw, 10.5px); font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; }
+
+.ip-trows { display: grid; gap: 3px; }
+.ip-trow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 5px 8px; background: var(--ip-sunken); border: 1px solid var(--ip-hairline); }
+.ip-trow[data-done="true"] { border-color: #ccff003d; }
+.ip-trow[data-done="true"] .ip-trow-name b { color: var(--ip-muted); text-decoration: line-through; }
+.ip-trow[data-active="true"] { background: var(--ip-raise); border-color: var(--ip-accent); }
+.ip-check { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ip-line); color: var(--ip-accent); font-size: 11px; line-height: 1; }
+.ip-trow[data-done="true"] .ip-check { background: #ccff0024; border-color: var(--ip-accent); }
+.ip-trow-name { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; min-width: 0; }
+.ip-trow-name b { font-size: clamp(10px, 1.1cqw, 12px); }
+.ip-trow-kind { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); }
+
+/* ---------- meeting ---------- */
+
+.ip.ip-meet { grid-template-rows: auto minmax(0, 1fr); }
+
+.ip-meet-head { align-items: flex-end; }
+
+.ip-meet-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, min(330px, 40%));
+  gap: clamp(8px, 1.1cqw, 14px);
+  min-height: 0;
+}
+
+.ip-chat-wrap { display: grid; min-height: 0; background: var(--ip-sunken); border: 1px solid var(--ip-line); }
+.ip-chat { display: flex; flex-direction: column; gap: 7px; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: clamp(8px, 1.1cqw, 12px); }
+.ip-line { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: flex-start; }
+.ip-line-body { min-width: 0; padding: 5px 9px; background: var(--ip-panel); border: 1px solid var(--ip-hairline); }
+.ip-line[data-you="true"] .ip-line-body { border-color: #ccff0040; }
+.ip-line-head { display: flex; flex-wrap: wrap; gap: 5px 8px; align-items: baseline; }
+.ip-line-head b { font-size: clamp(10px, 1.1cqw, 12px); }
+.ip-line-head time { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); font-variant-numeric: tabular-nums; }
+.ip-line-text { font-size: clamp(10px, 1.12cqw, 12.5px); overflow-wrap: anywhere; }
+
+.ip-votes { display: flex; flex-direction: column; gap: clamp(6px, 0.9cqw, 10px); min-height: 0; padding: clamp(8px, 1.1cqw, 12px); background: var(--ip-sunken); border: 1px solid var(--ip-line); }
+.ip-vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 118px), 1fr)); gap: 5px; align-content: start; flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+
+.ip .ip-vote {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-height: clamp(30px, 4.4cqw, 38px);
+  padding: 5px 8px;
+  background: var(--ip-panel);
+  border: 1px solid var(--ip-hairline);
+  text-align: left;
+  white-space: normal;
+}
+.ip .ip-vote:hover:not(:disabled) { border-color: var(--ip-accent); color: var(--ip-text); }
+.ip .ip-vote[aria-pressed="true"] { background: var(--ip-raise); border-color: var(--ip-accent); }
+.ip .ip-vote[data-dead="true"] { opacity: 0.42; text-decoration: line-through; }
+.ip-vote-meta { display: grid; gap: 1px; min-width: 0; }
+.ip-vote-meta b { font-size: clamp(10px, 1.1cqw, 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ip-vote-meta span { color: var(--ip-muted); font-size: clamp(9px, 1cqw, 10.5px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ip-waiting { padding: 5px 9px; border: 1px solid #ccff0059; color: var(--ip-accent); font-size: clamp(9.5px, 1.05cqw, 11px); letter-spacing: 0.12em; text-transform: uppercase; }
+.ip-tally { display: flex; flex-wrap: wrap; gap: 5px 10px; align-items: baseline; justify-content: space-between; }
+
+/* ---------- ejection ---------- */
+
+.ip.ip-eject { display: grid; place-items: center; padding: clamp(12px, 2.4cqw, 28px); }
+
+.ip-eject-card {
+  display: grid;
+  gap: clamp(9px, 1.3cqw, 14px);
+  justify-items: center;
+  width: min(580px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: clamp(14px, 2.4cqw, 26px);
+  background: var(--ip-panel);
+  border: 1px solid var(--ip-line);
+  text-align: center;
+}
+
+.ip-eject-actor { display: inline-flex; align-items: center; gap: 10px; font-size: clamp(12px, 1.8cqw, 17px); }
+.ip-eject-ring { width: clamp(38px, 7cqw, 64px); height: clamp(38px, 7cqw, 64px); border: 2px solid #ffffff2e; border-radius: 50%; box-shadow: inset 0 0 0 1px #00000080; }
+.ip-eject-card h2 { font-size: clamp(16px, 3.2cqw, 31px); line-height: 1.1; letter-spacing: 0.04em; }
+.ip-eject-card[data-verdict="impostor"] { border-color: #ff4d4d73; }
+.ip-eject-card[data-verdict="impostor"] h2 { color: var(--ip-danger); }
+.ip-eject-card[data-verdict="crew"] h2 { color: var(--ip-info); }
+.ip-eject-meta { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* ---------- debrief ---------- */
+
+.ip-outcome { display: grid; gap: 4px; min-width: 0; }
+.ip-outcome h1 { font-size: clamp(18px, 3.4cqw, 34px); line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; }
+.ip-debrief[data-win="true"] .ip-outcome h1 { color: var(--ip-accent); text-shadow: 0 0 20px #ccff0040; }
+.ip-debrief[data-win="false"] .ip-outcome h1 { color: var(--ip-danger); text-shadow: 0 0 20px #ff4d4d46; }
+
+.ip-debrief-meta { display: grid; gap: 6px; justify-items: end; }
+.ip-stars { display: flex; gap: 4px; font-size: clamp(14px, 2.1cqw, 22px); line-height: 1; letter-spacing: 0.12em; color: var(--ip-accent); }
+.ip-stars span[data-off="true"] { color: var(--ip-line); }
+.ip-salvage { display: grid; gap: 1px; justify-items: end; }
+.ip-salvage b { color: var(--ip-info); font-size: clamp(15px, 2.4cqw, 24px); font-variant-numeric: tabular-nums; }
+
+.ip-caches { display: grid; gap: clamp(6px, 0.9cqw, 10px); }
+.ip-cache { display: grid; gap: 6px; padding: clamp(8px, 1.1cqw, 12px); background: var(--ip-sunken); border: 1px solid var(--ip-hairline); }
+.ip-cache[data-open="true"] { border-color: #ccff0040; }
+.ip-cache-top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; justify-content: space-between; }
+.ip-cache-top b { font-size: clamp(10px, 1.14cqw, 12.5px); letter-spacing: 0.08em; }
+.ip-cache-reveal { display: grid; gap: 2px; }
+.ip-cache-reveal b { color: var(--ip-accent); font-size: clamp(13px, 1.9cqw, 18px); }
+.ip-cache-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ip-cache-actions > .ip-btn { flex: 1 1 118px; min-width: 0; }
+
+.ip-inv { display: grid; gap: 5px; }
+.ip-inv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 8px; background: var(--ip-sunken); border: 1px solid var(--ip-hairline); }
+.ip-inv-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; min-width: 0; }
+.ip-inv-meta b { font-size: clamp(10px, 1.1cqw, 12px); }
+
+/* ---------- modal panels (locker / settings) ---------- */
+
+/* The SDK frame stylesheet is present in this frame (the harness injects
+   frame.css), but these overrides make the dialog deterministic either way:
+   the wrapper owns the dim and centring, the scrim only lays the panel out. */
+
+.ip.ip-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  display: grid;
+  place-items: center;
+  padding: clamp(8px, 2cqw, 20px);
+  background: #05070ac9;
+  overflow: hidden;
+}
+
+.ip-modal > .rf-frame-scrim {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.ip-modal .rf-frame-menu {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  background: var(--ip-panel);
+  border: 1px solid var(--ip-line);
+  color: var(--ip-text);
+}
+
+.ip-modal .rf-frame-menu-heading {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: clamp(7px, 1cqw, 11px) clamp(10px, 1.4cqw, 16px);
+  background: var(--ip-sunken);
+  border-bottom: 1px solid var(--ip-line);
+}
+.ip-modal .rf-frame-menu-heading h2 { color: var(--ip-accent); font-size: clamp(11px, 1.4cqw, 14px); letter-spacing: 0.16em; text-transform: uppercase; }
+.ip-modal .rf-frame-menu-heading button { min-height: 0; padding: 0 8px; background: transparent; border: 1px solid var(--ip-line); color: var(--ip-muted); font-size: 18px; line-height: 1.2; }
+.ip-modal .rf-frame-menu-heading button:hover:not(:disabled) { background: transparent; border-color: #ff4d4d80; color: var(--ip-danger); }
+
+.ip-modal .rf-frame-menu-body { display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+.ip-modal .rf-frame-menu-footer { display: none; }
+
+.ip-panel { display: flex; flex-direction: column; width: 100%; max-height: 100%; min-height: 0; }
+.ip-panel-body {
+  display: grid;
+  gap: clamp(8px, 1.1cqw, 14px);
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: clamp(10px, 1.4cqw, 16px);
+}
+.ip-panel-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  padding: clamp(8px, 1.1cqw, 12px) clamp(10px, 1.4cqw, 16px);
+  background: var(--ip-sunken);
+  border-top: 1px solid var(--ip-line);
+}
+
+.ip-section { display: grid; gap: 6px; }
+.ip-cosm { display: grid; gap: 5px; }
+.ip-cosm-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 5px 8px; background: var(--ip-sunken); border: 1px solid var(--ip-hairline); }
+.ip-cosm-row[data-owned="true"] { border-color: #ccff003d; }
+.ip-swatch { width: 16px; height: 16px; border: 1px solid #ffffff33; box-shadow: inset 0 0 0 1px #00000080; }
+
+/* ---------- narrow frames ---------- */
+
+@container ip (max-width: 620px) {
+  .ip-meet-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .ip-hud-roster { width: min(196px, 72%); }
+  .ip-feed { display: none; }
+  .ip-progress { width: clamp(120px, 34cqw, 220px); }
+}
+
+@container ip (max-width: 470px) {
+  .ip-lobby-head,
+  .ip-brief-head,
+  .ip-meet-head,
+  .ip-debrief-head { flex-direction: column; align-items: stretch; }
+  .ip-head-actions,
+  .ip-hud-buttons { justify-content: flex-start; }
+  .ip-head-right,
+  .ip-debrief-meta,
+  .ip-salvage { justify-items: start; }
+  .ip-vote-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 96px), 1fr)); }
+  .ip-hud-top { flex-direction: column; }
+  .ip-hud-right { justify-items: start; }
+  .ip-vision { white-space: normal; }
+  .ip-tag { text-align: left; }
+  .ip-progress { max-width: 100%; }
+}
+
+@media (max-height: 430px) {
+  .ip.ip-lobby,
+  .ip.ip-brief,
+  .ip.ip-meet,
+  .ip.ip-debrief { gap: 6px; padding: 8px; }
+  .ip .ip-card { padding: 8px; }
+  .ip .ip-title { font-size: 15px; }
+  .ip .ip-card { gap: 6px; }
+}

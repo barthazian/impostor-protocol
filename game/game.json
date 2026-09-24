@@ -1,0 +1,14 @@
+{
+  "name": "Rare Friends: Impostor Protocol",
+  "consumable": "Tournament Pass",
+  "price": "1000000000000000000",
+  "outcomes": [
+    { "name": "Scrap Metal", "chanceBps": 2100, "reward": "0" },
+    { "name": "Spare Parts", "chanceBps": 3000, "reward": "250000000000000000" },
+    { "name": "Circuit Board", "chanceBps": 1900, "reward": "500000000000000000" },
+    { "name": "Power Cell", "chanceBps": 1500, "reward": "1000000000000000000" },
+    { "name": "Rare Alloy", "chanceBps": 900, "reward": "2000000000000000000" },
+    { "name": "Quantum Core", "chanceBps": 400, "reward": "5000000000000000000" },
+    { "name": "Genesis Artifact", "chanceBps": 200, "reward": "10000000000000000000" }
+  ]
+}

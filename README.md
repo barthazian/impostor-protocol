@@ -1,0 +1,75 @@
+# Rare Friends: Impostor Protocol
+
+**▶ Play it now: https://barthazian.github.io/impostor-protocol/**
+
+A single-player social-deduction round for the [Rare Friends Vibeathon](https://github.com/spokesz/rarefriends-vibeathon),
+built on **FriendSDK v0.1.2**. Your own Rare Friends Generations Friend *is* the
+player character — drawn from its unmodified canonical 16×16 sprite mask
+(halo + mask, 5× integer scale, tinted like a crew suit, silhouette never redrawn).
+
+**Builder:** Barthazian · [@barthazian](https://github.com/barthazian)
+**Category:** Character Spotlight (primary) · Token Activity (secondary)
+
+## What it is
+
+A vision-limited space station, six AI crewmates, and impostors among them. Fix six
+RNG action-sequence tasks, report bodies, argue in meetings, vote, and survive.
+Sabotage countdowns force triage. Every round is reproducible from its 4-character
+**Friend Room code** — no networking, just the same seed for everyone who enters it.
+
+## How to play
+
+- **Move** `W A S D` / arrow keys, or tap the floor. **Interact** `E` / tap the prompt.
+- **Task list** `T` · **ability** `Q` · **vent** `R` (as impostor) · **mute** `M` · **close** `Esc`.
+- Worked on a phone: the frame is 3:2, so at 390 px wide it renders a 388×258 station
+  with a 185×46 touch prompt.
+
+## Costs and rewards
+
+| Tier | Cost | Reward |
+| --- | --- | --- |
+| Practice | 0 RF | no cache, full round |
+| Standard | 1 Tournament Pass (1 RF) | 1 Reward Cache |
+| Elite | 3 Tournament Passes (3 RF) | 3 Reward Caches |
+
+Each cache is one weighted roll from the table in `game/game.json`: 21% Scrap Metal
+(0 RF), 30% 0.25, 19% 0.5, 15% 1, 9% 2, 4% 5, 2% 10 RF — **EV 0.90 RF per 1 RF
+pass, a 10% house edge**, maximum prize 10 RF. Skill pays **Salvage Points**, a
+session-only cosmetics currency that is *not* redeemable for RF, because the SDK's
+outcome weights are fixed per definition.
+
+**Everything here is simulated** and labelled as such in-game: preview balances,
+rolls, prizes and salvage never touch a contract and no payout is promised.
+
+## Requirements
+
+A browser wallet on **Robinhood mainnet (chain 4663)** holding a hardwired Rare
+Friends Generations NFT, **generation ≥ 1**. The SDK's ownership gate runs before
+play and this build keeps it intact. No RF, private key or signature is needed.
+
+## This repository
+
+```
+docs/          the built static preview — this is what GitHub Pages serves
+game/          the game source (index.tsx, src/, tests/, game.json, README.md)
+SUBMISSION.md  the submitted write-up, in the vibeathon's expected format
+PUBLISH.md     how this repo was produced / how to redeploy
+```
+
+The game source is the product; `docs/` is a build of it. To rebuild:
+
+```sh
+git clone https://github.com/spokesz/friendsdk && cd friendsdk && npm ci
+cp -r <this repo>/game <friendsdk>/games/impostor-protocol
+npm run dev:game -- games/impostor-protocol      # play locally on http://localhost:4173
+npx friendsdk build games/impostor-protocol      # rebuild docs/
+```
+
+See `game/README.md` for the full verification log (what was tested and how) and
+the known limitations.
+
+## Credits
+
+Built with FriendSDK v0.1.2 by Rare Friends. Artwork for the Friend itself comes
+from the owner's canonical on-chain sprite; all other pixel art, UI and audio cues
+are original to this project.
