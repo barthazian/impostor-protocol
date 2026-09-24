@@ -122,10 +122,15 @@ Run on Node 22 in WSL2 Ubuntu:
   schedule; it does not reason about the player's movement.
 
 **Credits**
-Friend artwork is read at runtime from the canonical Generations sprite registry
-via the SDK's `createFriendReader()`; all station, crewmate, console and UI art is
-original, drawn procedurally in canvas and CSS in this project. Sound uses the
-SDK's procedural sound kit. No third-party sprites, fonts or audio files.
+All **character** artwork — the player's Friend, every crewmate and the impostor's
+frame — is canonical on-chain Rare Friends artwork, read at runtime from the
+Generations sprite registry: the player via the SDK's `createFriendReader()`, the
+crewmates via the SDK's generation sprite reader, each from its own token. The
+impostor's frame is one of those canonical masks with a reveal-only pixel treatment
+(hostile tint, damaged halo) applied once the round is decided — never a redraw.
+Station geometry, consoles and UI are drawn procedurally in canvas and CSS in this
+project. Sound uses the SDK's procedural sound kit. No third-party sprites, fonts or
+audio files.
 
 
 ## Artwork & assets provenance

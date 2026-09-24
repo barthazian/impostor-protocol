@@ -201,11 +201,15 @@ one-emergency-per-match and seed reproducibility.
 
 ## Assets
 
-- Friend artwork: canonical Generations sprites read at runtime with the SDK's
-  `createFriendReader()` from the public registry — never re-drawn or re-coloured
-  in a way that changes the silhouette.
-- All station, crewmate, console and UI art is original, drawn procedurally in
-  canvas and CSS in this project. No third-party sprites, fonts or audio files.
+- Character artwork: canonical Generations sprites for every actor — the player via
+  the SDK's `createFriendReader()`, each crewmate via the SDK's generation sprite
+  reader from its own token — read at runtime from the public registry and never
+  re-drawn or re-coloured in a way that changes the silhouette.
+- The impostor's frame is one of those canonical masks with a reveal-only pixel
+  treatment (hostile tint, damaged halo) applied after the round is decided; there
+  is no impostor-specific artwork file.
+- Station geometry, consoles and UI are drawn procedurally in canvas and CSS in this
+  project. No third-party sprites, fonts or audio files.
 - Sound: the SDK's procedural sound kit (`@rarefriends/friendsdk/sounds`).
 
 ## Known issues and capability gaps
